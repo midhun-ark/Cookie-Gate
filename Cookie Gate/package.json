@@ -1,0 +1,11 @@
+{
+  "name": "complyark",
+  "private": true,
+  "workspaces": [
+    "apps/server",
+    "apps/admin-ui"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

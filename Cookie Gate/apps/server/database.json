@@ -1,0 +1,11 @@
+{
+    "dev": {
+        "driver": "pg",
+        "user": "postgres",
+        "password": "password",
+        "host": "localhost",
+        "database": "complyark",
+        "port": 5445,
+        "schema": "public"
+    }
+}
