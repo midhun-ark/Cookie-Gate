@@ -5,6 +5,7 @@ import { authRoutes } from './routes/auth.routes';
 import { tenantRoutes } from './routes/tenant.routes';
 import { rulesRoutes } from './routes/rules.routes';
 import { auditRoutes } from './routes/audit.routes';
+import { tenantAdminRoutes } from './routes/tenant-admin.routes';
 
 export const buildApp = async () => {
     const app = Fastify({
@@ -19,6 +20,7 @@ export const buildApp = async () => {
     await app.register(tenantRoutes, { prefix: '/tenants' });
     await app.register(rulesRoutes, { prefix: '/rules' });
     await app.register(auditRoutes, { prefix: '/audit-logs' });
+    await app.register(tenantAdminRoutes, { prefix: '/tenant-admins' });
 
     return app;
 };
