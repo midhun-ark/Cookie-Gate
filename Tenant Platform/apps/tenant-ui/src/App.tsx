@@ -8,7 +8,7 @@ import { Layout } from '@/components/Layout';
 import { LoginPage } from '@/pages/Login';
 import { ResetPasswordPage } from '@/pages/ResetPassword';
 import { DashboardPage } from '@/pages/Dashboard';
-import { WebsitesPage } from '@/pages/Websites';
+import { WebsitesPage, WebsiteDetailPage } from '@/pages/Websites';
 import { AuditLogsPage } from '@/pages/AuditLogs';
 
 // Auth Guard Component
@@ -52,25 +52,6 @@ function App() {
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-    );
-}
-
-// Placeholder for Website Detail Page (would be a full component)
-function WebsiteDetailPage() {
-    return (
-        <div className="container" style={{ padding: '2rem 0' }}>
-            <div className="card">
-                <div className="card-header">
-                    <h2>Website Configuration</h2>
-                </div>
-                <div className="card-body">
-                    <p className="text-gray-500">
-                        Website detail page with tabs for Notice, Purposes, Banner, and Preview.
-                        This would include full multi-language editor functionality.
-                    </p>
-                </div>
-            </div>
-        </div>
     );
 }
 

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComplyArk Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background-color: white;
+            padding: 1rem 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            margin: 0;
+            color: #111827;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+    </style>
+
+    <!-- ComplyArk Loader -->
+    <script>
+        (function (w, d, s, l, i) {
+            w[l] = w[l] || []; w[l].push({
+                'gtm.start':
+                    new Date().getTime(), event: 'gtm.js'
+            }); var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+                    'http://localhost:3001/public/loader.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'fe389670-a7a8-456b-a9d2-8b03d1ac17b8');
+    </script>
+    <!-- End ComplyArk Loader -->
+
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Test Website</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>Welcome</h2>
+            <p>This is a test page to verify the ComplyArk cookie consent banner integration.</p>
+            <p>The banner should appear based on your configuration in the Tenant Platform.</p>
+        </div>
+
+        <div class="card">
+            <h3>Cookie Status</h3>
+            <p>Current Consent: <span id="consent-status">Checking...</span></p>
+            <button
+                onclick="localStorage.removeItem('comply_ark_consent_fe389670-a7a8-456b-a9d2-8b03d1ac17b8'); location.reload();">
+                Reset Consent
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Simple checker for demo purposes
+        setInterval(function () {
+            var consent = localStorage.getItem('comply_ark_consent_fe389670-a7a8-456b-a9d2-8b03d1ac17b8');
+            var el = document.getElementById('consent-status');
+            if (consent) {
+                var data = JSON.parse(consent);
+                el.textContent = 'Consented (' + data.type + ') at ' + new Date(data.timestamp).toLocaleTimeString();
+                el.style.color = 'green';
+            } else {
+                el.textContent = 'Not yet consented';
+                el.style.color = '#d97706';
+            }
+        }, 1000);
+    </script>
+</body>
+
+</html>
