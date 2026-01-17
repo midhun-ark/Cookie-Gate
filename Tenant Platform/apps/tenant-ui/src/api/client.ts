@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { ApiResponse } from '@/types';
+import { useAuthStore } from '@/store';
 
 const API_BASE_URL = '/tenant';
 
@@ -27,7 +28,7 @@ api.interceptors.response.use(
     (error: AxiosError<ApiResponse>) => {
         // Handle 401 Unauthorized
         if (error.response?.status === 401) {
-            localStorage.removeItem('tenant_token');
+            useAuthStore.getState().logout();
             window.location.href = '/login';
         }
 

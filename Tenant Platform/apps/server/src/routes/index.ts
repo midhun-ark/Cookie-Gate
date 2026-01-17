@@ -5,3 +5,5 @@ export * from './purpose.routes';
 export * from './banner.routes';
 export * from './audit.routes';
 export * from './language.routes';
+export * from './loader.routes';
+export * from './runtime.routes';

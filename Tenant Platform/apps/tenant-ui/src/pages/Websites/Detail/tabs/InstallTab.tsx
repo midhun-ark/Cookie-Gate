@@ -5,8 +5,10 @@ import { useState } from 'react';
 export function InstallTab({ website }: { website: Website }) {
     const [copied, setCopied] = useState(false);
 
-    // This would ideally come from an environment variable or config
-    const SCRIPT_URL = 'https://cdn.complyark.com/loader.js';
+    // Switch based on environment
+    const SCRIPT_URL = import.meta.env.DEV
+        ? 'http://localhost:3001/public/loader.js'
+        : 'https://cdn.complyark.com/loader.js';
 
     // The snippet
     const snippet = `<script>

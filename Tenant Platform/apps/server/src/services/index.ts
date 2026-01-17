@@ -5,3 +5,4 @@ export * from './purpose.service';
 export * from './banner.service';
 export * from './audit.service';
 export * from './language.service';
+export * from './runtime.service';
