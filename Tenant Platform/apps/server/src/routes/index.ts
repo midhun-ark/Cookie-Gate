@@ -1,0 +1,7 @@
+export * from './auth.routes';
+export * from './website.routes';
+export * from './notice.routes';
+export * from './purpose.routes';
+export * from './banner.routes';
+export * from './audit.routes';
+export * from './language.routes';

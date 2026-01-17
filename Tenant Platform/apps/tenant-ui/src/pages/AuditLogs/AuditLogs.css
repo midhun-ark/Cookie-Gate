@@ -1,0 +1,111 @@
+/* Audit Logs Page Styles */
+.audit-logs-page {
+    padding: var(--spacing-8) 0;
+}
+
+/* Filters Bar */
+.filters-bar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    padding: var(--spacing-5) !important;
+    margin-bottom: var(--spacing-6);
+}
+
+.filters-group {
+    display: flex;
+    gap: var(--spacing-4);
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    min-width: 160px;
+}
+
+.filter-item .form-label {
+    margin-bottom: var(--spacing-1);
+    font-size: var(--font-size-xs);
+}
+
+.filter-item .form-input {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+}
+
+/* Table Cells */
+.timestamp-cell {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-500);
+    white-space: nowrap;
+}
+
+.actor-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.actor-email {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-gray-900);
+}
+
+.action-badge {
+    display: inline-flex;
+    padding: var(--spacing-1) var(--spacing-2);
+    background: var(--color-primary-50);
+    color: var(--color-primary-700);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--radius-md);
+}
+
+.resource-type {
+    text-transform: capitalize;
+    color: var(--color-gray-600);
+}
+
+.metadata-preview {
+    font-size: var(--font-size-xs);
+    background: var(--color-gray-100);
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-gray-600);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4);
+    border-top: 1px solid var(--color-gray-100);
+}
+
+.pagination-info {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-500);
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-12);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filters-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filters-group {
+        flex-direction: column;
+    }
+
+    .filter-item {
+        min-width: 100%;
+    }
+}

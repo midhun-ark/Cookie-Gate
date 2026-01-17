@@ -1,0 +1,7 @@
+{
+    "defaultEnv": {
+        "ENV": "DATABASE_URL"
+    },
+    "sql-file": true,
+    "migrations-dir": "migrations"
+}

@@ -1,0 +1,22 @@
+# Tenant Platform uses the shared PostgreSQL from Admin Portal
+# To run independently, uncomment the postgres service below
+
+# services:
+#   postgres:
+#     image: postgres:15-alpine
+#     ports:
+#       - "5445:5432"
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: password
+#       POSTGRES_DB: complyark
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
+
+# NOTE: Run Admin Portal's docker-compose first:
+# cd "../Admin Portal" && docker-compose up -d
+
+
