@@ -56,6 +56,7 @@ export interface WebsiteWithStats extends Website {
 export interface WebsiteNotice {
     id: string;
     websiteId: string;
+    dpoEmail?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -67,6 +68,12 @@ export interface NoticeTranslation {
     title: string;
     description: string;
     policyUrl?: string;
+    // DPDPA Fields
+    dataCategories: string[];
+    processingPurposes: string[];
+    rightsDescription?: string;
+    withdrawalInstruction?: string;
+    complaintInstruction?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -83,6 +90,7 @@ export interface Purpose {
     id: string;
     websiteId: string;
     isEssential: boolean;
+    tag: string;
     status: PurposeStatus;
     displayOrder: number;
     createdAt: Date;

@@ -17,17 +17,18 @@ export const purposeRepository = {
         return withTransaction(async (client: PoolClient) => {
             // Create the purpose
             const purposeResult = await client.query<Purpose>(
-                `INSERT INTO purposes (website_id, is_essential, display_order)
-                VALUES ($1, $2, $3)
+                `INSERT INTO purposes (website_id, is_essential, tag, display_order)
+                VALUES ($1, $2, $3, $4)
                 RETURNING 
                     id, 
                     website_id as "websiteId",
                     is_essential as "isEssential",
+                    tag,
                     status,
                     display_order as "displayOrder",
                     created_at as "createdAt",
                     updated_at as "updatedAt"`,
-                [websiteId, input.isEssential, input.displayOrder]
+                [websiteId, input.isEssential, input.tag, input.displayOrder]
             );
             const purpose = purposeResult.rows[0];
 
@@ -67,6 +68,7 @@ export const purposeRepository = {
                 id, 
                 website_id as "websiteId",
                 is_essential as "isEssential",
+                tag,
                 status,
                 display_order as "displayOrder",
                 created_at as "createdAt",
@@ -95,6 +97,7 @@ export const purposeRepository = {
                 id, 
                 website_id as "websiteId",
                 is_essential as "isEssential",
+                tag,
                 status,
                 display_order as "displayOrder",
                 created_at as "createdAt",

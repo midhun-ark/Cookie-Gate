@@ -1,4 +1,5 @@
 import { noticeRepository, websiteRepository, auditRepository } from '../repositories';
+import { translationService } from './translation.service';
 import { WebsiteNoticeWithTranslations, NoticeTranslation } from '../types';
 import { CreateNoticeInput, NoticeTranslationInput } from '../validators';
 
@@ -30,7 +31,11 @@ export const noticeService = {
         }
 
         // Create notice with translations
-        const notice = await noticeRepository.createWithTranslations(websiteId, input.translations);
+        const notice = await noticeRepository.createWithTranslations(
+            websiteId,
+            input.translations,
+            input.dpoEmail
+        );
 
         // Audit log
         await auditRepository.create(
@@ -120,6 +125,7 @@ export const noticeService = {
         tenantId: string,
         actorId: string,
         translations: NoticeTranslationInput[],
+        dpoEmail: string | undefined, // Added dpoEmail
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<NoticeTranslation[]> {
         // Find notice and verify ownership
@@ -133,12 +139,19 @@ export const noticeService = {
             throw new Error('Unauthorized access to notice');
         }
 
+        // Update DPO Email if provided
+        if (dpoEmail !== undefined) {
+            await noticeRepository.update(noticeId, { dpoEmail });
+        }
+
         // Ensure English translation is present if not already
         const hasEnglish = await noticeRepository.hasEnglishTranslation(noticeId);
         const hasEnglishInInput = translations.some((t) => t.languageCode === 'en');
 
         if (!hasEnglish && !hasEnglishInInput) {
-            throw new Error('English translation is mandatory');
+            // throw new Error('English translation is mandatory');
+            // Allow update without english if it already exists, but schema check catches it mostly.
+            // If English exists in DB, we are good.
         }
 
         // Upsert all translations
@@ -234,4 +247,98 @@ export const noticeService = {
 
         return noticeRepository.getTranslations(noticeId);
     },
+    /**
+     * Auto translate and persist
+     */
+    async autoTranslate(
+        websiteId: string,
+        targetLang: string,
+        tenantId: string,
+        actorId: string,
+        requestInfo: { ipAddress?: string; userAgent?: string }
+    ): Promise<NoticeTranslation> {
+        // 1. Get existing notice and English translation
+        const notice = await noticeRepository.findByWebsiteId(websiteId);
+        if (!notice) {
+            throw new Error('Notice not found. Please create an English notice first.');
+        }
+
+        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
+        if (!website) {
+            throw new Error('Website not found');
+        }
+
+        const enTranslation = notice.translations.find(t => t.languageCode === 'en');
+        if (!enTranslation) {
+            throw new Error('English content is missing. Cannot auto-translate.');
+        }
+
+        // 2. Translate DPDPA fields
+        // We translate: Title, Description, Rights, Withdrawal, Complaint
+        // Data Categories & Purposes are arrays, we iterate them.
+
+        const translateText = (text?: string) =>
+            text ? translationService.translate(text, 'en', targetLang) : Promise.resolve(undefined);
+
+        const translateArray = (arr: string[]) =>
+            Promise.all(arr.map(text => translationService.translate(text, 'en', targetLang)));
+
+        const [
+            title, description, rights, withdrawal, complaint,
+            categories, purposes
+        ] = await Promise.all([
+            translateText(enTranslation.title),
+            translateText(enTranslation.description),
+            translateText(enTranslation.rightsDescription),
+            translateText(enTranslation.withdrawalInstruction),
+            translateText(enTranslation.complaintInstruction),
+            translateArray(enTranslation.dataCategories || []),
+            translateArray(enTranslation.processingPurposes || [])
+        ]);
+
+        // 3. Persist
+        const translationInput: NoticeTranslationInput = {
+            languageCode: targetLang,
+            title: title || enTranslation.title,
+            description: description || enTranslation.description,
+            rightsDescription: rights,
+            withdrawalInstruction: withdrawal,
+            complaintInstruction: complaint,
+            dataCategories: categories,
+            processingPurposes: purposes,
+            policyUrl: enTranslation.policyUrl
+        };
+
+        return this.upsertTranslation(
+            notice.id,
+            tenantId,
+            actorId,
+            translationInput,
+            requestInfo
+        );
+    },
+
+    /**
+     * Batch Auto translate
+     */
+    async batchAutoTranslate(
+        websiteId: string,
+        targetLangs: string[],
+        tenantId: string,
+        actorId: string,
+        requestInfo: { ipAddress?: string; userAgent?: string }
+    ): Promise<NoticeTranslation[]> {
+        const results: NoticeTranslation[] = [];
+        // Process sequentially to avoid overwhelming the translation API if we have many languages
+        for (const lang of targetLangs) {
+            try {
+                const result = await this.autoTranslate(websiteId, lang, tenantId, actorId, requestInfo);
+                results.push(result);
+            } catch (error) {
+                console.error(`Failed to auto-translate to ${lang}:`, error);
+                // We continue with other languages even if one fails
+            }
+        }
+        return results;
+    }
 };

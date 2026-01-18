@@ -8,6 +8,7 @@ import type {
     Website,
     CanActivateResult,
     WebsiteNotice,
+    NoticeTranslation,
     Purpose,
     BannerCustomization,
     AuditLog,
@@ -104,16 +105,24 @@ export const noticeApi = {
 
     create: async (
         websiteId: string,
-        translations: Array<{
-            languageCode: string;
-            title: string;
-            description: string;
-            policyUrl?: string;
-        }>
+        data: {
+            dpoEmail?: string;
+            translations: Array<{
+                languageCode: string;
+                title: string;
+                description: string;
+                policyUrl?: string;
+                dataCategories?: string[];
+                processingPurposes?: string[];
+                rightsDescription?: string;
+                withdrawalInstruction?: string;
+                complaintInstruction?: string;
+            }>
+        }
     ): Promise<WebsiteNotice> => {
         const response = await api.post<ApiResponse<WebsiteNotice>>(
             `/websites/${websiteId}/notices`,
-            { translations }
+            data
         );
         return response.data.data!;
     },
@@ -125,9 +134,37 @@ export const noticeApi = {
             title: string;
             description: string;
             policyUrl?: string;
-        }>
+            dataCategories?: string[];
+            processingPurposes?: string[];
+            rightsDescription?: string;
+            withdrawalInstruction?: string;
+            complaintInstruction?: string;
+        }>,
+        dpoEmail?: string
     ): Promise<void> => {
-        await api.patch(`/notices/${noticeId}/translations`, { translations });
+        await api.patch(`/notices/${noticeId}/translations`, { translations, dpoEmail });
+    },
+
+    autoTranslate: async (
+        websiteId: string,
+        targetLang: string
+    ): Promise<NoticeTranslation> => {
+        const response = await api.post<ApiResponse<NoticeTranslation>>(
+            `/websites/${websiteId}/notices/auto-translate`,
+            { targetLang }
+        );
+        return response.data.data!;
+    },
+
+    autoTranslateBatch: async (
+        websiteId: string,
+        targetLangs: string[]
+    ): Promise<NoticeTranslation[]> => {
+        const response = await api.post<ApiResponse<NoticeTranslation[]>>(
+            `/websites/${websiteId}/notices/auto-translate-batch`,
+            { targetLangs }
+        );
+        return response.data.data!;
     },
 };
 
@@ -148,6 +185,7 @@ export const purposeApi = {
         websiteId: string,
         data: {
             isEssential: boolean;
+            tag: string;
             displayOrder: number;
             translations: Array<{
                 languageCode: string;

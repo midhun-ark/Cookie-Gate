@@ -58,6 +58,12 @@ export interface NoticeTranslation {
     title: string;
     description: string;
     policyUrl?: string;
+    // DPDPA Fields
+    dataCategories?: string[];
+    processingPurposes?: string[];
+    rightsDescription?: string;
+    withdrawalInstruction?: string;
+    complaintInstruction?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -65,6 +71,7 @@ export interface NoticeTranslation {
 export interface WebsiteNotice {
     id: string;
     websiteId: string;
+    dpoEmail?: string;
     createdAt: string;
     updatedAt: string;
     translations: NoticeTranslation[];
@@ -87,6 +94,7 @@ export interface Purpose {
     id: string;
     websiteId: string;
     isEssential: boolean;
+    tag: string;
     status: PurposeStatus;
     displayOrder: number;
     createdAt: string;
