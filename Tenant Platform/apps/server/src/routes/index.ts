@@ -7,3 +7,4 @@ export * from './audit.routes';
 export * from './language.routes';
 export * from './loader.routes';
 export * from './runtime.routes';
+export * from './translation.routes';

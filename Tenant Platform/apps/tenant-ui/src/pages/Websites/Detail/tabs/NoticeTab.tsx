@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, AlertCircle, CheckCircle } from 'lucide-react';
-import { noticeApi, languageApi } from '@/api';
+import { noticeApi, translationApi } from '@/api';
+import { useLanguages } from '@/hooks';
+import { LanguageSelector } from '@/components';
+import type { WebsiteNotice as Notice } from '@/types';
 import { getErrorMessage } from '@/api/client';
 
 export function NoticeTab({ websiteId }: { websiteId: string }) {
@@ -9,16 +12,14 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const [selectedLang, setSelectedLang] = useState('en');
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [isTranslating, setIsTranslating] = useState(false);
 
     const { data: notice, isLoading: isLoadingNotice } = useQuery({
         queryKey: ['notice', websiteId],
         queryFn: () => noticeApi.get(websiteId),
     });
 
-    const { data: languages } = useQuery({
-        queryKey: ['languages'],
-        queryFn: languageApi.list,
-    });
+    const { languages } = useLanguages();
 
     // Form state
     const [formData, setFormData] = useState<{
@@ -36,6 +37,15 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
             };
         });
         setFormData(initialData);
+    } else if (!isLoadingNotice && notice === null && Object.keys(formData).length === 0) {
+        // Initialize with default English content for new notices
+        setFormData({
+            en: {
+                title: 'We use cookies',
+                description: 'We use cookies to improve your experience and analyze web traffic.',
+                policyUrl: '',
+            }
+        });
     }
 
     const saveMutation = useMutation({
@@ -73,6 +83,38 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         setSaveSuccess(false);
     };
 
+    const handleAutoTranslate = async () => {
+        const enData = formData['en'];
+        if (!enData || !enData.title || !enData.description) {
+            setError('English content is required for translation');
+            return;
+        }
+
+        setIsTranslating(true);
+        setError('');
+
+        try {
+            const [translatedTitle, translatedDescription] = await Promise.all([
+                translationApi.translate(enData.title, 'en', selectedLang),
+                translationApi.translate(enData.description, 'en', selectedLang)
+            ]);
+
+            setFormData(prev => ({
+                ...prev,
+                [selectedLang]: {
+                    ...prev[selectedLang],
+                    title: translatedTitle,
+                    description: translatedDescription
+                }
+            }));
+            setSaveSuccess(false);
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setIsTranslating(false);
+        }
+    };
+
     const currentData = formData[selectedLang] || { title: '', description: '', policyUrl: '' };
 
     if (isLoadingNotice) {
@@ -88,20 +130,18 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                 </p>
             </div>
 
+            import {LanguageSelector} from '@/components';
+
+            // ... (inside component)
+
             <div className="settings-card">
-                <div className="flex gap-4 mb-6 border-b border-gray-100 pb-4">
-                    {languages?.map((lang) => (
-                        <button
-                            key={lang.code}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedLang === lang.code
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            onClick={() => setSelectedLang(lang.code)}
-                        >
-                            {lang.name}
-                        </button>
-                    ))}
+                <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                    <span className="text-sm text-gray-500">Select Language to Configure:</span>
+                    <LanguageSelector
+                        selectedLang={selectedLang}
+                        onSelect={setSelectedLang}
+                        languages={languages || []}
+                    />
                 </div>
 
                 {error && (
@@ -115,6 +155,22 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                     <div className="alert alert-success mb-4">
                         <CheckCircle size={16} />
                         Changes saved successfully
+                    </div>
+                )}
+
+                {selectedLang !== 'en' && (
+                    <div className="mb-6 bg-blue-50 p-4 rounded-md flex items-center justify-between">
+                        <div>
+                            <h4 className="text-sm font-medium text-blue-900">Auto-Translation</h4>
+                            <p className="text-sm text-blue-700">Automatically translate content from English to {languages?.find(l => l.code === selectedLang)?.name}.</p>
+                        </div>
+                        <button
+                            className="btn bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
+                            onClick={handleAutoTranslate}
+                            disabled={isTranslating}
+                        >
+                            {isTranslating ? 'Translating...' : 'Auto-Translate'}
+                        </button>
                     </div>
                 )}
 

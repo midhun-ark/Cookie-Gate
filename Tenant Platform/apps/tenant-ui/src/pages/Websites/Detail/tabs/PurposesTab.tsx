@@ -6,11 +6,14 @@ import {
     GripVertical,
     AlertCircle,
 } from 'lucide-react';
-import { purposeApi, languageApi } from '@/api';
+import { purposeApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
+import { useLanguages } from '@/hooks';
+import { LanguageSelector } from '@/components';
 import type { Purpose } from '@/types';
 
 export function PurposesTab({ websiteId }: { websiteId: string }) {
+    // ... (unchanged)
     const queryClient = useQueryClient();
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -151,10 +154,7 @@ function PurposeForm({
     const [isEssential, setIsEssential] = useState(purpose?.isEssential || false);
     const [error, setError] = useState('');
 
-    const { data: languages } = useQuery({
-        queryKey: ['languages'],
-        queryFn: languageApi.list,
-    });
+    const { languages } = useLanguages();
 
     const [translations, setTranslations] = useState<{
         [lang: string]: { name: string; description: string }
@@ -231,22 +231,13 @@ function PurposeForm({
                 </p>
             </div>
 
-            <div className="mb-4 border-b border-gray-100 pb-2">
-                <div className="flex gap-2">
-                    {languages?.map((lang) => (
-                        <button
-                            key={lang.code}
-                            type="button"
-                            className={`px-3 py-1 text-sm rounded ${selectedLang === lang.code
-                                ? 'bg-gray-800 text-white'
-                                : 'bg-gray-100 text-gray-600'
-                                }`}
-                            onClick={() => setSelectedLang(lang.code)}
-                        >
-                            {lang.name}
-                        </button>
-                    ))}
-                </div>
+            <div className="mb-4 border-b border-gray-100 pb-4 flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Translation Language:</span>
+                <LanguageSelector
+                    selectedLang={selectedLang}
+                    onSelect={setSelectedLang}
+                    languages={languages || []}
+                />
             </div>
 
             <div className="space-y-4">
