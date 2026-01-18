@@ -12,19 +12,21 @@ export const noticeRepository = {
      */
     async createWithTranslations(
         websiteId: string,
-        translations: NoticeTranslationInput[]
+        translations: NoticeTranslationInput[],
+        dpoEmail?: string
     ): Promise<WebsiteNoticeWithTranslations> {
         return withTransaction(async (client: PoolClient) => {
             // Create the notice
             const noticeResult = await client.query<WebsiteNotice>(
-                `INSERT INTO website_notices (website_id)
-                VALUES ($1)
+                `INSERT INTO website_notices (website_id, dpo_email)
+                VALUES ($1, $2)
                 RETURNING 
                     id, 
                     website_id as "websiteId",
+                    dpo_email as "dpoEmail",
                     created_at as "createdAt",
                     updated_at as "updatedAt"`,
-                [websiteId]
+                [websiteId, dpoEmail]
             );
             const notice = noticeResult.rows[0];
 
@@ -33,8 +35,8 @@ export const noticeRepository = {
             for (const t of translations) {
                 const result = await client.query<NoticeTranslation>(
                     `INSERT INTO website_notice_translations 
-                    (website_notice_id, language_code, title, description, policy_url)
-                    VALUES ($1, $2, $3, $4, $5)
+                    (website_notice_id, language_code, title, description, policy_url, data_categories, processing_purposes, rights_description, withdrawal_instruction, complaint_instruction)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     RETURNING 
                         id,
                         website_notice_id as "websiteNoticeId",
@@ -42,9 +44,14 @@ export const noticeRepository = {
                         title,
                         description,
                         policy_url as "policyUrl",
+                        data_categories as "dataCategories",
+                        processing_purposes as "processingPurposes",
+                        rights_description as "rightsDescription",
+                        withdrawal_instruction as "withdrawalInstruction",
+                        complaint_instruction as "complaintInstruction",
                         created_at as "createdAt",
                         updated_at as "updatedAt"`,
-                    [notice.id, t.languageCode, t.title, t.description, t.policyUrl]
+                    [notice.id, t.languageCode, t.title, t.description, t.policyUrl, t.dataCategories, t.processingPurposes, t.rightsDescription, t.withdrawalInstruction, t.complaintInstruction]
                 );
                 translationResults.push(result.rows[0]);
             }
@@ -57,6 +64,26 @@ export const noticeRepository = {
     },
 
     /**
+     * Update notice fields
+     */
+    async update(id: string, data: { dpoEmail?: string }): Promise<WebsiteNotice | null> {
+        const result = await query<WebsiteNotice>(
+            `UPDATE website_notices
+            SET dpo_email = COALESCE($2, dpo_email),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING 
+                id, 
+                website_id as "websiteId",
+                dpo_email as "dpoEmail",
+                created_at as "createdAt",
+                updated_at as "updatedAt"`,
+            [id, data.dpoEmail]
+        );
+        return result.rows[0] || null;
+    },
+
+    /**
      * Find notice by website ID with translations
      */
     async findByWebsiteId(websiteId: string): Promise<WebsiteNoticeWithTranslations | null> {
@@ -64,6 +91,7 @@ export const noticeRepository = {
             `SELECT 
                 id, 
                 website_id as "websiteId",
+                dpo_email as "dpoEmail",
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_notices 
@@ -92,6 +120,7 @@ export const noticeRepository = {
             `SELECT 
                 id, 
                 website_id as "websiteId",
+                dpo_email as "dpoEmail",
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_notices 
@@ -113,6 +142,11 @@ export const noticeRepository = {
                 title,
                 description,
                 policy_url as "policyUrl",
+                data_categories as "dataCategories",
+                processing_purposes as "processingPurposes",
+                rights_description as "rightsDescription",
+                withdrawal_instruction as "withdrawalInstruction",
+                complaint_instruction as "complaintInstruction",
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_notice_translations
@@ -132,13 +166,18 @@ export const noticeRepository = {
     ): Promise<NoticeTranslation> {
         const result = await query<NoticeTranslation>(
             `INSERT INTO website_notice_translations 
-            (website_notice_id, language_code, title, description, policy_url)
-            VALUES ($1, $2, $3, $4, $5)
+            (website_notice_id, language_code, title, description, policy_url, data_categories, processing_purposes, rights_description, withdrawal_instruction, complaint_instruction)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (website_notice_id, language_code) 
             DO UPDATE SET 
                 title = EXCLUDED.title,
                 description = EXCLUDED.description,
                 policy_url = EXCLUDED.policy_url,
+                data_categories = EXCLUDED.data_categories,
+                processing_purposes = EXCLUDED.processing_purposes,
+                rights_description = EXCLUDED.rights_description,
+                withdrawal_instruction = EXCLUDED.withdrawal_instruction,
+                complaint_instruction = EXCLUDED.complaint_instruction,
                 updated_at = NOW()
             RETURNING 
                 id,
@@ -147,9 +186,14 @@ export const noticeRepository = {
                 title,
                 description,
                 policy_url as "policyUrl",
+                data_categories as "dataCategories",
+                processing_purposes as "processingPurposes",
+                rights_description as "rightsDescription",
+                withdrawal_instruction as "withdrawalInstruction",
+                complaint_instruction as "complaintInstruction",
                 created_at as "createdAt",
                 updated_at as "updatedAt"`,
-            [noticeId, translation.languageCode, translation.title, translation.description, translation.policyUrl]
+            [noticeId, translation.languageCode, translation.title, translation.description, translation.policyUrl, translation.dataCategories, translation.processingPurposes, translation.rightsDescription, translation.withdrawalInstruction, translation.complaintInstruction]
         );
         return result.rows[0];
     },

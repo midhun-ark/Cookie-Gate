@@ -27,7 +27,7 @@ export function WebsiteDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<TabId>('notice');
+    const [activeTab, setActiveTab] = useState<TabId>('purposes');
     const [activateError, setActivateError] = useState('');
 
     const { data: website, isLoading } = useQuery({
@@ -75,8 +75,8 @@ export function WebsiteDetailPage() {
     }
 
     const tabs = [
-        { id: 'notice', label: 'Notice', icon: FileText },
         { id: 'purposes', label: 'Purposes', icon: List },
+        { id: 'notice', label: 'Notice', icon: FileText },
         { id: 'banner', label: 'Banner', icon: Layout },
         { id: 'install', label: 'Install', icon: Code },
     ];

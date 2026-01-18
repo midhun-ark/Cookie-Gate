@@ -21,13 +21,19 @@ export const purposeTranslationSchema = z.object({
         .max(255, 'Purpose name must not exceed 255 characters'),
     description: z
         .string()
-        .min(20, 'Description must be at least 20 characters for clarity')
-        .max(2000, 'Description must not exceed 2000 characters'),
+        .max(2000, 'Description must not exceed 2000 characters')
+        .optional()
+        .or(z.literal('')),
 });
 
 // Create purpose
 export const createPurposeSchema = z.object({
     isEssential: z.boolean().default(false),
+    tag: z
+        .string()
+        .min(1)
+        .max(50)
+        .regex(/^[a-z0-9_]+$/, 'Tag must be lowercase, numbers, and underscores only'),
     displayOrder: z.number().int().min(0).default(0),
     translations: z
         .array(purposeTranslationSchema)

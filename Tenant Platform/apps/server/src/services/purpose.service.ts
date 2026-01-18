@@ -37,6 +37,7 @@ export const purposeService = {
                 metadata: {
                     websiteId,
                     isEssential: input.isEssential,
+                    tag: input.tag,
                     languages: input.translations.map((t) => t.languageCode),
                 },
                 ipAddress: requestInfo.ipAddress,

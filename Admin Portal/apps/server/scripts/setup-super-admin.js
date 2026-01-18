@@ -23,10 +23,10 @@ const SALT_ROUNDS = 12;
 async function setupSuperAdmin() {
     const client = new Client({
         host: 'localhost',
-        port: 5445,
-        user: 'postgres',
-        password: 'password',
-        database: 'complyark',
+        port: 5433,
+        user: 'ark',
+        password: 'arkpass',
+        database: 'ark_db',
     });
 
     try {

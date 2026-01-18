@@ -5,7 +5,8 @@ import {
     updateNoticeTranslationSchema,
     batchUpdateTranslationsSchema,
     websiteIdParamSchema,
-    noticeIdParamSchema
+    noticeIdParamSchema,
+    autoTranslateNoticeSchema
 } from '../validators';
 import {
     authMiddleware,
@@ -86,6 +87,7 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
                 tenantId,
                 userId,
                 input.translations,
+                input.dpoEmail,
                 requestInfo
             );
 
@@ -96,6 +98,8 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
             };
         }
     );
+
+    // ... (Put / Delete / Get methods remain same)
 
     /**
      * PUT /tenant/notices/:noticeId/translations/:languageCode
@@ -175,6 +179,62 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
             return {
                 success: true,
                 data: translations,
+            };
+        }
+    );
+    /**
+     * POST /tenant/websites/:id/notices/auto-translate
+     * Auto translate and persist notice
+     */
+    app.post<{ Params: { id: string } }>(
+        '/websites/:id/notices/auto-translate',
+        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+            const { targetLang } = autoTranslateNoticeSchema.parse(request.body);
+            const { userId, tenantId } = getCurrentUser(request);
+            const requestInfo = getRequestInfo(request);
+
+            const translation = await noticeService.autoTranslate(
+                websiteId,
+                targetLang,
+                tenantId,
+                userId,
+                requestInfo
+            );
+
+            return {
+                success: true,
+                data: translation,
+                message: 'Translation generated and saved successfully',
+            };
+        }
+    );
+
+    /**
+     * POST /tenant/websites/:id/notices/auto-translate-batch
+     * Auto translate batch
+     */
+    app.post<{ Params: { id: string } }>(
+        '/websites/:id/notices/auto-translate-batch',
+        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+            // using cast to any for schema import if it fails below, but ideally it works
+            const { targetLangs } = (require('../validators').batchAutoTranslateNoticeSchema).parse(request.body);
+            const { userId, tenantId } = getCurrentUser(request);
+            const requestInfo = getRequestInfo(request);
+
+            const translations = await noticeService.batchAutoTranslate(
+                websiteId,
+                targetLangs,
+                tenantId,
+                userId,
+                requestInfo
+            );
+
+            return {
+                success: true,
+                data: translations,
+                message: `Successfully processed ${translations.length} translations`,
             };
         }
     );

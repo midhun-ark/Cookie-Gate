@@ -10,7 +10,7 @@ const languageCodeSchema = z
     .string()
     .min(2)
     .max(10)
-    .regex(/^[a-z]{2}(-[A-Z]{2})?$/, 'Invalid language code format');
+    .regex(/^[a-z]{2,3}([-_][a-zA-Z0-9]+)?$/, 'Invalid language code format');
 
 // Notice translation
 export const noticeTranslationSchema = z.object({
@@ -28,10 +28,17 @@ export const noticeTranslationSchema = z.object({
         .url('Invalid URL format')
         .optional()
         .nullable(),
+    // DPDPA Fields
+    dataCategories: z.array(z.string()).default([]),
+    processingPurposes: z.array(z.string()).default([]),
+    rightsDescription: z.string().optional(),
+    withdrawalInstruction: z.string().optional(),
+    complaintInstruction: z.string().optional(),
 });
 
 // Create notice with initial translation
 export const createNoticeSchema = z.object({
+    dpoEmail: z.string().email('Invalid email format').optional(),
     translations: z
         .array(noticeTranslationSchema)
         .min(1, 'At least one translation is required')
@@ -46,7 +53,18 @@ export const updateNoticeTranslationSchema = noticeTranslationSchema;
 
 // Batch update translations
 export const batchUpdateTranslationsSchema = z.object({
+    dpoEmail: z.string().email('Invalid email format').optional(),
     translations: z.array(noticeTranslationSchema).min(1),
+});
+
+// Auto translate
+export const autoTranslateNoticeSchema = z.object({
+    targetLang: languageCodeSchema,
+});
+
+// Batch Auto translate
+export const batchAutoTranslateNoticeSchema = z.object({
+    targetLangs: z.array(languageCodeSchema).min(1),
 });
 
 // Notice ID param

@@ -9,10 +9,10 @@ export const config = {
     // Database
     db: {
         host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5445', 10),
-        name: process.env.DB_NAME || 'complyark',
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'password',
+        port: parseInt(process.env.DB_PORT || '5433', 10),
+        name: process.env.DB_NAME || 'ark_db',
+        user: process.env.DB_USER || 'ark',
+        password: process.env.DB_PASSWORD || 'arkpass',
     },
 
     // JWT Authentication
