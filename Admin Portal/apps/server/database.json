@@ -1,11 +1,11 @@
 {
-    "dev": {
+    "development": {
         "driver": "pg",
-        "user": "postgres",
-        "password": "password",
+        "user": "ark",
+        "password": "arkpass",
         "host": "localhost",
-        "database": "complyark",
-        "port": 5445,
+        "database": "ark_db",
+        "port": 5433,
         "schema": "public"
     }
 }

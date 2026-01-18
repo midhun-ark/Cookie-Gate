@@ -2,11 +2,11 @@ services:
   postgres:
     image: postgres:15-alpine
     ports:
-      - "5445:5432"
+      - "5433:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: complyark
+      POSTGRES_USER: ark
+      POSTGRES_PASSWORD: arkpass
+      POSTGRES_DB: ark_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

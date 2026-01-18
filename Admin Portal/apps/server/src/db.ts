@@ -8,11 +8,11 @@ import { Pool } from 'pg';
  * Uses configuration matching docker-compose.yml (port 5445).
  */
 export const db = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
+    user: process.env.DB_USER || 'ark',
+    password: process.env.DB_PASSWORD || 'arkpass',
     host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'complyark',
-    port: parseInt(process.env.DB_PORT || '5445', 10),
+    database: process.env.DB_NAME || 'ark_db',
+    port: parseInt(process.env.DB_PORT || '5433', 10),
 });
 
 // Test connection on startup (optional but recommended for debugging)
