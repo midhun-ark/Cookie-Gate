@@ -275,6 +275,40 @@ export const bannerApi = {
     getPreviewUrl: (websiteId: string): string => {
         return `/tenant/websites/${websiteId}/banner/preview`;
     },
+
+    // Translation methods
+    getTranslations: async (websiteId: string): Promise<Array<{
+        languageCode: string;
+        headlineText: string;
+        descriptionText: string;
+        acceptButtonText: string;
+        rejectButtonText: string;
+        preferencesButtonText: string;
+    }>> => {
+        const response = await api.get<ApiResponse<Array<{
+            languageCode: string;
+            headlineText: string;
+            descriptionText: string;
+            acceptButtonText: string;
+            rejectButtonText: string;
+            preferencesButtonText: string;
+        }>>>(`/websites/${websiteId}/banner/translations`);
+        return response.data.data!;
+    },
+
+    saveTranslations: async (
+        websiteId: string,
+        translations: Array<{
+            languageCode: string;
+            headlineText: string;
+            descriptionText: string;
+            acceptButtonText: string;
+            rejectButtonText: string;
+            preferencesButtonText: string;
+        }>
+    ): Promise<void> => {
+        await api.post(`/websites/${websiteId}/banner/translations`, { translations });
+    },
 };
 
 // ==================== AUDIT ====================

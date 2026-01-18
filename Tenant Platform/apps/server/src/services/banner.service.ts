@@ -320,4 +320,117 @@ export const bannerService = {
 </body>
 </html>`;
     },
+
+    // ==================== TRANSLATION METHODS ====================
+
+    /**
+     * Get all banner translations for a website
+     */
+    async getTranslations(
+        websiteId: string,
+        tenantId: string
+    ): Promise<Array<{
+        languageCode: string;
+        headlineText: string;
+        descriptionText: string;
+        acceptButtonText: string;
+        rejectButtonText: string;
+        preferencesButtonText: string;
+    }>> {
+        // Verify website ownership
+        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
+        if (!website) {
+            throw new Error('Website not found');
+        }
+
+        const translations = await bannerRepository.getTranslations(websiteId);
+
+        // If no translations exist, return default English
+        if (translations.length === 0) {
+            const defaults = bannerRepository.getDefaultTranslation();
+            return [{
+                languageCode: 'en',
+                ...defaults,
+            }];
+        }
+
+        return translations.map(t => ({
+            languageCode: t.languageCode,
+            headlineText: t.headlineText,
+            descriptionText: t.descriptionText,
+            acceptButtonText: t.acceptButtonText,
+            rejectButtonText: t.rejectButtonText,
+            preferencesButtonText: t.preferencesButtonText,
+        }));
+    },
+
+    /**
+     * Create or update banner translations
+     */
+    async upsertTranslations(
+        websiteId: string,
+        tenantId: string,
+        actorId: string,
+        translations: Array<{
+            languageCode: string;
+            headlineText: string;
+            descriptionText: string;
+            acceptButtonText: string;
+            rejectButtonText: string;
+            preferencesButtonText: string;
+        }>,
+        requestInfo: { ipAddress?: string; userAgent?: string }
+    ): Promise<Array<{
+        languageCode: string;
+        headlineText: string;
+        descriptionText: string;
+        acceptButtonText: string;
+        rejectButtonText: string;
+        preferencesButtonText: string;
+    }>> {
+        // Verify website ownership
+        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
+        if (!website) {
+            throw new Error('Website not found');
+        }
+
+        const results = [];
+
+        for (const t of translations) {
+            const saved = await bannerRepository.upsertTranslation(websiteId, t.languageCode, {
+                headlineText: t.headlineText,
+                descriptionText: t.descriptionText,
+                acceptButtonText: t.acceptButtonText,
+                rejectButtonText: t.rejectButtonText,
+                preferencesButtonText: t.preferencesButtonText,
+            });
+            results.push({
+                languageCode: saved.languageCode,
+                headlineText: saved.headlineText,
+                descriptionText: saved.descriptionText,
+                acceptButtonText: saved.acceptButtonText,
+                rejectButtonText: saved.rejectButtonText,
+                preferencesButtonText: saved.preferencesButtonText,
+            });
+        }
+
+        // Audit log
+        await auditRepository.create(
+            tenantId,
+            actorId,
+            'BANNER_TRANSLATIONS_UPDATED',
+            {
+                resourceType: 'banner',
+                resourceId: websiteId,
+                metadata: {
+                    websiteId,
+                    languages: translations.map(t => t.languageCode),
+                },
+                ipAddress: requestInfo.ipAddress,
+                userAgent: requestInfo.userAgent,
+            }
+        );
+
+        return results;
+    },
 };

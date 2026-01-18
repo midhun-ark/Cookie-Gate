@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, RotateCcw, Monitor, Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
-import { bannerApi } from '@/api';
+import { Save, RotateCcw, Monitor, Smartphone, CheckCircle, AlertCircle, Globe } from 'lucide-react';
+import { bannerApi, languageApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
-import type { BannerCustomization } from '@/types';
+import type { BannerCustomization, SupportedLanguage } from '@/types';
+
+interface BannerTranslation {
+    languageCode: string;
+    headlineText: string;
+    descriptionText: string;
+    acceptButtonText: string;
+    rejectButtonText: string;
+    preferencesButtonText: string;
+}
 
 const DEFAULT_BANNER: BannerCustomization = {
     primaryColor: '#000000',
@@ -20,15 +29,27 @@ const DEFAULT_BANNER: BannerCustomization = {
     fontFamily: 'Inter, sans-serif'
 };
 
+const DEFAULT_TRANSLATION: Omit<BannerTranslation, 'languageCode'> = {
+    headlineText: 'We use cookies',
+    descriptionText: 'This website uses cookies to ensure you get the best experience.',
+    acceptButtonText: 'Accept All',
+    rejectButtonText: 'Reject All',
+    preferencesButtonText: 'Settings',
+};
+
 export function BannerTab({ websiteId }: { websiteId: string }) {
     const queryClient = useQueryClient();
     const [config, setConfig] = useState<BannerCustomization>(DEFAULT_BANNER);
+    const [translations, setTranslations] = useState<BannerTranslation[]>([]);
+    const [selectedLang, setSelectedLang] = useState('en');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [isDirty, setIsDirty] = useState(false);
+    const [isTextDirty, setIsTextDirty] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [error, setError] = useState('');
 
-    const { data: serverConfig, isLoading } = useQuery({
+    // Fetch styles
+    const { data: serverConfig, isLoading: loadingStyles } = useQuery({
         queryKey: ['banner', websiteId],
         queryFn: async () => {
             try {
@@ -40,15 +61,51 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
         }
     });
 
+    // Fetch translations
+    const { data: serverTranslations, isLoading: loadingTranslations } = useQuery({
+        queryKey: ['bannerTranslations', websiteId],
+        queryFn: () => bannerApi.getTranslations(websiteId)
+    });
+
+    // Fetch languages
+    const { data: languages = [] } = useQuery({
+        queryKey: ['languages'],
+        queryFn: languageApi.list
+    });
+
     useEffect(() => {
         if (serverConfig) setConfig(serverConfig);
     }, [serverConfig]);
 
-    const saveMutation = useMutation({
+    useEffect(() => {
+        if (serverTranslations) {
+            // Ensure English is always present
+            let trans = [...serverTranslations];
+            if (!trans.find(t => t.languageCode === 'en')) {
+                trans = [{ languageCode: 'en', ...DEFAULT_TRANSLATION }, ...trans];
+            }
+            setTranslations(trans);
+        }
+    }, [serverTranslations]);
+
+    // Save styles mutation
+    const saveStyleMutation = useMutation({
         mutationFn: () => bannerApi.save(websiteId, config),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['banner', websiteId] });
             setIsDirty(false);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        },
+        onError: (err) => setError(getErrorMessage(err)),
+    });
+
+    // Save translations mutation
+    const saveTranslationMutation = useMutation({
+        mutationFn: () => bannerApi.saveTranslations(websiteId, translations),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bannerTranslations', websiteId] });
+            setIsTextDirty(false);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
         },
@@ -60,14 +117,46 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
         onSuccess: (data) => { setConfig(data); setIsDirty(false); }
     });
 
-    const handleChange = (key: keyof BannerCustomization, value: string) => {
+    const handleStyleChange = (key: keyof BannerCustomization, value: string) => {
         setConfig(prev => ({ ...prev, [key]: value }));
         setIsDirty(true);
         setSaveSuccess(false);
     };
 
+    const handleTextChange = (key: keyof Omit<BannerTranslation, 'languageCode'>, value: string) => {
+        setTranslations(prev => {
+            const idx = prev.findIndex(t => t.languageCode === selectedLang);
+            if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = { ...updated[idx], [key]: value };
+                return updated;
+            } else {
+                return [...prev, { ...DEFAULT_TRANSLATION, languageCode: selectedLang, [key]: value }];
+            }
+        });
+        setIsTextDirty(true);
+        setSaveSuccess(false);
+    };
+
+    const getCurrentTranslation = (): BannerTranslation => {
+        return translations.find(t => t.languageCode === selectedLang) || {
+            languageCode: selectedLang,
+            ...DEFAULT_TRANSLATION
+        };
+    };
+
+    const addLanguage = (code: string) => {
+        if (!translations.find(t => t.languageCode === code)) {
+            setTranslations(prev => [...prev, { languageCode: code, ...DEFAULT_TRANSLATION }]);
+            setIsTextDirty(true);
+        }
+        setSelectedLang(code);
+    };
+
+    const isLoading = loadingStyles || loadingTranslations;
     if (isLoading) return <div style={{ padding: '32px', textAlign: 'center' }}><div className="spinner"></div></div>;
 
+    const currentText = getCurrentTranslation();
     const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' };
     const labelStyle: React.CSSProperties = { display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' };
 
@@ -76,8 +165,8 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Banner Appearance</h2>
-                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Customize your consent banner design.</p>
+                    <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Banner Settings</h2>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Customize appearance and text for each language.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
@@ -90,73 +179,101 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
 
                 {/* LEFT: Editor Card */}
                 <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 
-                        {/* Column 1 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            {/* Layout & Position */}
+                    {/* Styles Section */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ background: '#4f46e5', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '10px' }}>GLOBAL</span>
+                            Appearance
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                            {/* Layout */}
                             <div>
-                                <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Layout & Position</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <div>
-                                        <label style={labelStyle}>Layout Style</label>
-                                        <select value={config.layout} onChange={(e) => handleChange('layout', e.target.value)} style={inputStyle as any}>
-                                            <option value="banner">Bar (Top/Bottom)</option>
-                                            <option value="modal">Center Modal</option>
-                                            <option value="popup">Floating Popup</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={labelStyle}>Position</label>
-                                        <select value={config.position} onChange={(e) => handleChange('position', e.target.value)} disabled={config.layout === 'modal'} style={{ ...inputStyle, background: config.layout === 'modal' ? '#f9fafb' : '#fff' } as any}>
-                                            <option value="bottom">Bottom</option>
-                                            <option value="top">Top</option>
-                                            <option value="center">Center</option>
-                                        </select>
-                                    </div>
-                                </div>
+                                <label style={labelStyle}>Layout Style</label>
+                                <select value={config.layout} onChange={(e) => handleStyleChange('layout', e.target.value)} style={inputStyle as any}>
+                                    <option value="banner">Bar (Top/Bottom)</option>
+                                    <option value="modal">Center Modal</option>
+                                    <option value="popup">Floating Popup</option>
+                                </select>
                             </div>
-
-                            {/* Theme Colors */}
                             <div>
-                                <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Theme Colors</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleChange('backgroundColor', v)} />
-                                    <ColorInput label="Text Color" value={config.textColor} onChange={(v) => handleChange('textColor', v)} />
-                                    <ColorInput label="Primary Button" value={config.acceptButtonColor} onChange={(v) => handleChange('acceptButtonColor', v)} />
-                                    <ColorInput label="Secondary Button" value={config.rejectButtonColor} onChange={(v) => handleChange('rejectButtonColor', v)} />
-                                </div>
+                                <label style={labelStyle}>Position</label>
+                                <select value={config.position} onChange={(e) => handleStyleChange('position', e.target.value)} disabled={config.layout === 'modal'} style={{ ...inputStyle, background: config.layout === 'modal' ? '#f9fafb' : '#fff' } as any}>
+                                    <option value="bottom">Bottom</option>
+                                    <option value="top">Top</option>
+                                    <option value="center">Center</option>
+                                </select>
                             </div>
+                            {/* Colors */}
+                            <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleStyleChange('backgroundColor', v)} />
+                            <ColorInput label="Text Color" value={config.textColor} onChange={(v) => handleStyleChange('textColor', v)} />
+                            <ColorInput label="Primary Button" value={config.acceptButtonColor} onChange={(v) => handleStyleChange('acceptButtonColor', v)} />
+                            <ColorInput label="Secondary Button" value={config.rejectButtonColor} onChange={(v) => handleStyleChange('rejectButtonColor', v)} />
                         </div>
-
-                        {/* Column 2 */}
-                        <div>
-                            <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Button Labels</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div>
-                                    <label style={labelStyle}>Accept Button</label>
-                                    <input type="text" value={config.acceptButtonText} onChange={(e) => handleChange('acceptButtonText', e.target.value)} style={inputStyle} />
-                                </div>
-                                <div>
-                                    <label style={labelStyle}>Reject Button</label>
-                                    <input type="text" value={config.rejectButtonText} onChange={(e) => handleChange('rejectButtonText', e.target.value)} style={inputStyle} />
-                                </div>
-                                <div>
-                                    <label style={labelStyle}>Preferences Button</label>
-                                    <input type="text" value={config.customizeButtonText} onChange={(e) => handleChange('customizeButtonText', e.target.value)} style={inputStyle} />
-                                </div>
-                            </div>
+                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={() => saveStyleMutation.mutate()} disabled={!isDirty || saveStyleMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isDirty || saveStyleMutation.isPending ? 0.6 : 1 }}>
+                                <Save style={{ width: '12px', height: '12px' }} /> Save Styles
+                            </button>
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', marginTop: '20px', borderTop: '1px solid #f3f4f6' }}>
-                        <button onClick={() => { if (confirm('Reset all styles to default?')) resetMutation.mutate(); }} style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <RotateCcw style={{ width: '12px', height: '12px' }} /> Reset
-                        </button>
-                        <button onClick={() => saveMutation.mutate()} disabled={!isDirty || saveMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isDirty || saveMutation.isPending ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}>
-                            <Save style={{ width: '14px', height: '14px' }} /> Save Changes
-                        </button>
+                    <div style={{ borderTop: '1px solid #e5e7eb', marginBottom: '20px' }}></div>
+
+                    {/* Text Section with Language Selector */}
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#374151', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Globe style={{ width: '14px', height: '14px', color: '#4f46e5' }} />
+                                Banner Text
+                            </h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                                <Globe style={{ width: '14px', height: '14px', color: '#4f46e5' }} />
+                                <select
+                                    value={selectedLang}
+                                    onChange={(e) => { addLanguage(e.target.value); setSelectedLang(e.target.value); }}
+                                    style={{ fontSize: '13px', fontWeight: 500, background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer', color: '#374151' }}
+                                >
+                                    {languages.map((l: SupportedLanguage) => (
+                                        <option key={l.code} value={l.code}>{l.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Text Fields */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                                <label style={labelStyle}>Headline</label>
+                                <input type="text" value={currentText.headlineText} onChange={(e) => handleTextChange('headlineText', e.target.value)} style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Description</label>
+                                <textarea value={currentText.descriptionText} onChange={(e) => handleTextChange('descriptionText', e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={labelStyle}>Accept Button</label>
+                                    <input type="text" value={currentText.acceptButtonText} onChange={(e) => handleTextChange('acceptButtonText', e.target.value)} style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Reject Button</label>
+                                    <input type="text" value={currentText.rejectButtonText} onChange={(e) => handleTextChange('rejectButtonText', e.target.value)} style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Settings Button</label>
+                                    <input type="text" value={currentText.preferencesButtonText} onChange={(e) => handleTextChange('preferencesButtonText', e.target.value)} style={inputStyle} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <button onClick={() => { if (confirm('Reset styles to default?')) resetMutation.mutate(); }} style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <RotateCcw style={{ width: '12px', height: '12px' }} /> Reset Styles
+                            </button>
+                            <button onClick={() => saveTranslationMutation.mutate()} disabled={!isTextDirty || saveTranslationMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isTextDirty || saveTranslationMutation.isPending ? 0.6 : 1 }}>
+                                <Save style={{ width: '12px', height: '12px' }} /> Save Text
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -197,12 +314,12 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
                                 borderRadius: config.layout === 'banner' ? '0' : '8px',
                                 ...(config.layout === 'popup' ? { marginLeft: 0, marginRight: 'auto' } : {})
                             }}>
-                                <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>We use cookies</h4>
-                                <p style={{ fontSize: '9px', marginBottom: '10px', opacity: 0.9, lineHeight: 1.4 }}>This website uses cookies for the best experience.</p>
+                                <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>{currentText.headlineText}</h4>
+                                <p style={{ fontSize: '9px', marginBottom: '10px', opacity: 0.9, lineHeight: 1.4 }}>{currentText.descriptionText}</p>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: config.layout === 'banner' ? 'flex-end' : 'flex-start', flexDirection: config.layout === 'banner' ? 'row' : 'column' }}>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: `1px solid ${config.textColor}`, background: 'transparent', color: config.textColor }}>{config.customizeButtonText}</button>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.rejectButtonColor, color: '#333' }}>{config.rejectButtonText}</button>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.acceptButtonColor, color: '#fff' }}>{config.acceptButtonText}</button>
+                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: `1px solid ${config.textColor}`, background: 'transparent', color: config.textColor }}>{currentText.preferencesButtonText}</button>
+                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.rejectButtonColor, color: '#333' }}>{currentText.rejectButtonText}</button>
+                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.acceptButtonColor, color: '#fff' }}>{currentText.acceptButtonText}</button>
                                 </div>
                             </div>
                         </div>

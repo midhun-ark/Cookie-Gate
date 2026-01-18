@@ -18,6 +18,7 @@ export interface RuntimePurpose {
 }
 
 export interface RuntimeBannerConfig {
+    // Styles (language-agnostic)
     position: string;
     layout: string;
     primaryColor: string;
@@ -26,12 +27,17 @@ export interface RuntimeBannerConfig {
     textColor: string;
     acceptButtonColor: string;
     rejectButtonColor: string;
-    acceptButtonText: string;
-    rejectButtonText: string;
-    customizeButtonText: string;
     fontFamily?: string;
     fontSize?: string;
     focusOutlineColor?: string;
+    // Translations (per language)
+    text: Record<string, {
+        headline: string;
+        description: string;
+        acceptButton: string;
+        rejectButton: string;
+        preferencesButton: string;
+    }>;
 }
 
 export interface RuntimeWebsiteConfig {
@@ -151,14 +157,16 @@ export const runtimeService = {
      * Get purposes with translations indexed by language code.
      */
     async getPurposesWithTranslations(siteId: string): Promise<RuntimePurpose[]> {
-        // Get all active purposes
+        // Get all active purposes - include tag for human-readable purpose keys
         const purposesResult = await query<{
             id: string;
+            tag: string;
             isEssential: boolean;
             displayOrder: number;
         }>(
             `SELECT 
                 id,
+                tag,
                 is_essential as "isEssential",
                 display_order as "displayOrder"
             FROM purposes
@@ -193,8 +201,9 @@ export const runtimeService = {
                 };
             }
 
+            // Use human-readable tag as key for script marking (e.g., data-purpose="analytics")
             purposes.push({
-                key: purpose.id,
+                key: purpose.tag,
                 required: purpose.isEssential,
                 displayOrder: purpose.displayOrder,
                 labels,
@@ -205,10 +214,24 @@ export const runtimeService = {
     },
 
     /**
-     * Get banner configuration with defaults.
+     * Get banner configuration with translations.
+     * Styles come from banner_customizations, text from website_banner_translations.
      */
     async getBannerConfig(siteId: string): Promise<RuntimeBannerConfig> {
-        const result = await query<BannerCustomization>(
+        // 1. Get styles from banner_customizations
+        const stylesResult = await query<{
+            position: string;
+            layout: string;
+            primaryColor: string;
+            secondaryColor: string;
+            backgroundColor: string;
+            textColor: string;
+            acceptButtonColor: string;
+            rejectButtonColor: string;
+            fontFamily?: string;
+            fontSize?: string;
+            focusOutlineColor?: string;
+        }>(
             `SELECT 
                 position,
                 layout,
@@ -218,9 +241,6 @@ export const runtimeService = {
                 text_color as "textColor",
                 accept_button_color as "acceptButtonColor",
                 reject_button_color as "rejectButtonColor",
-                accept_button_text as "acceptButtonText",
-                reject_button_text as "rejectButtonText",
-                customize_button_text as "customizeButtonText",
                 font_family as "fontFamily",
                 font_size as "fontSize",
                 focus_outline_color as "focusOutlineColor"
@@ -229,24 +249,73 @@ export const runtimeService = {
             [siteId]
         );
 
-        // Return custom or default banner config
-        if (result.rows.length > 0) {
-            const banner = result.rows[0];
+        // 2. Get translations from website_banner_translations
+        const translationsResult = await query<{
+            languageCode: string;
+            headlineText: string;
+            descriptionText: string;
+            acceptButtonText: string;
+            rejectButtonText: string;
+            preferencesButtonText: string;
+        }>(
+            `SELECT 
+                language_code as "languageCode",
+                headline_text as "headlineText",
+                description_text as "descriptionText",
+                accept_button_text as "acceptButtonText",
+                reject_button_text as "rejectButtonText",
+                preferences_button_text as "preferencesButtonText"
+            FROM website_banner_translations
+            WHERE website_id = $1`,
+            [siteId]
+        );
+
+        // Build text translations object
+        const text: Record<string, {
+            headline: string;
+            description: string;
+            acceptButton: string;
+            rejectButton: string;
+            preferencesButton: string;
+        }> = {};
+
+        for (const t of translationsResult.rows) {
+            text[t.languageCode] = {
+                headline: t.headlineText,
+                description: t.descriptionText,
+                acceptButton: t.acceptButtonText,
+                rejectButton: t.rejectButtonText,
+                preferencesButton: t.preferencesButtonText,
+            };
+        }
+
+        // Default English if no translations exist
+        if (!text['en']) {
+            text['en'] = {
+                headline: 'We use cookies',
+                description: 'This website uses cookies to ensure you get the best experience.',
+                acceptButton: 'Accept All',
+                rejectButton: 'Reject All',
+                preferencesButton: 'Settings',
+            };
+        }
+
+        // Return styles + translations
+        if (stylesResult.rows.length > 0) {
+            const styles = stylesResult.rows[0];
             return {
-                position: banner.position,
-                layout: banner.layout,
-                primaryColor: banner.primaryColor,
-                secondaryColor: banner.secondaryColor,
-                backgroundColor: banner.backgroundColor,
-                textColor: banner.textColor,
-                acceptButtonColor: banner.acceptButtonColor,
-                rejectButtonColor: banner.rejectButtonColor,
-                acceptButtonText: banner.acceptButtonText,
-                rejectButtonText: banner.rejectButtonText,
-                customizeButtonText: banner.customizeButtonText,
-                fontFamily: banner.fontFamily,
-                fontSize: banner.fontSize,
-                focusOutlineColor: banner.focusOutlineColor,
+                position: styles.position,
+                layout: styles.layout,
+                primaryColor: styles.primaryColor,
+                secondaryColor: styles.secondaryColor,
+                backgroundColor: styles.backgroundColor,
+                textColor: styles.textColor,
+                acceptButtonColor: styles.acceptButtonColor,
+                rejectButtonColor: styles.rejectButtonColor,
+                fontFamily: styles.fontFamily,
+                fontSize: styles.fontSize,
+                focusOutlineColor: styles.focusOutlineColor,
+                text,
             };
         }
 
@@ -260,12 +329,10 @@ export const runtimeService = {
             textColor: '#333333',
             acceptButtonColor: '#0066CC',
             rejectButtonColor: '#666666',
-            acceptButtonText: 'Accept All',
-            rejectButtonText: 'Reject All',
-            customizeButtonText: 'Settings',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             fontSize: '14px',
             focusOutlineColor: '#005299',
+            text,
         };
     },
 

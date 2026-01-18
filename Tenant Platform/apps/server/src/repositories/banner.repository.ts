@@ -1,5 +1,5 @@
 import { query } from '../db';
-import { BannerCustomization } from '../types';
+import { BannerCustomization, BannerTranslation } from '../types';
 import { BannerCustomizationInput, UpdateBannerCustomizationInput } from '../validators';
 
 /**
@@ -211,6 +211,125 @@ export const bannerRepository = {
             fontFamily: 'system-ui, -apple-system, sans-serif',
             fontSize: '14px',
             focusOutlineColor: '#005299',
+        };
+    },
+
+    // ==================== Translation Methods ====================
+
+    /**
+     * Get all translations for a website's banner
+     */
+    async getTranslations(websiteId: string): Promise<BannerTranslation[]> {
+        const result = await query<BannerTranslation>(
+            `SELECT 
+                id,
+                website_id as "websiteId",
+                language_code as "languageCode",
+                headline_text as "headlineText",
+                description_text as "descriptionText",
+                accept_button_text as "acceptButtonText",
+                reject_button_text as "rejectButtonText",
+                preferences_button_text as "preferencesButtonText",
+                created_at as "createdAt",
+                updated_at as "updatedAt"
+            FROM website_banner_translations
+            WHERE website_id = $1
+            ORDER BY CASE WHEN language_code = 'en' THEN 0 ELSE 1 END, language_code`,
+            [websiteId]
+        );
+        return result.rows;
+    },
+
+    /**
+     * Get translation for a specific language
+     */
+    async getTranslation(websiteId: string, languageCode: string): Promise<BannerTranslation | null> {
+        const result = await query<BannerTranslation>(
+            `SELECT 
+                id,
+                website_id as "websiteId",
+                language_code as "languageCode",
+                headline_text as "headlineText",
+                description_text as "descriptionText",
+                accept_button_text as "acceptButtonText",
+                reject_button_text as "rejectButtonText",
+                preferences_button_text as "preferencesButtonText",
+                created_at as "createdAt",
+                updated_at as "updatedAt"
+            FROM website_banner_translations
+            WHERE website_id = $1 AND language_code = $2`,
+            [websiteId, languageCode]
+        );
+        return result.rows[0] || null;
+    },
+
+    /**
+     * Upsert a banner translation
+     */
+    async upsertTranslation(
+        websiteId: string,
+        languageCode: string,
+        input: {
+            headlineText: string;
+            descriptionText: string;
+            acceptButtonText: string;
+            rejectButtonText: string;
+            preferencesButtonText: string;
+        }
+    ): Promise<BannerTranslation> {
+        const result = await query<BannerTranslation>(
+            `INSERT INTO website_banner_translations (
+                website_id, language_code, headline_text, description_text,
+                accept_button_text, reject_button_text, preferences_button_text
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (website_id, language_code)
+            DO UPDATE SET
+                headline_text = EXCLUDED.headline_text,
+                description_text = EXCLUDED.description_text,
+                accept_button_text = EXCLUDED.accept_button_text,
+                reject_button_text = EXCLUDED.reject_button_text,
+                preferences_button_text = EXCLUDED.preferences_button_text,
+                updated_at = NOW()
+            RETURNING 
+                id,
+                website_id as "websiteId",
+                language_code as "languageCode",
+                headline_text as "headlineText",
+                description_text as "descriptionText",
+                accept_button_text as "acceptButtonText",
+                reject_button_text as "rejectButtonText",
+                preferences_button_text as "preferencesButtonText",
+                created_at as "createdAt",
+                updated_at as "updatedAt"`,
+            [
+                websiteId,
+                languageCode,
+                input.headlineText,
+                input.descriptionText,
+                input.acceptButtonText,
+                input.rejectButtonText,
+                input.preferencesButtonText,
+            ]
+        );
+        return result.rows[0];
+    },
+
+    /**
+     * Get default banner text translations
+     */
+    getDefaultTranslation(): {
+        headlineText: string;
+        descriptionText: string;
+        acceptButtonText: string;
+        rejectButtonText: string;
+        preferencesButtonText: string;
+    } {
+        return {
+            headlineText: 'We use cookies',
+            descriptionText: 'This website uses cookies to ensure you get the best experience.',
+            acceptButtonText: 'Accept All',
+            rejectButtonText: 'Reject All',
+            preferencesButtonText: 'Settings',
         };
     },
 };

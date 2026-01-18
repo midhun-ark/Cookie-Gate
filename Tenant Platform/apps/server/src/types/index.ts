@@ -137,6 +137,24 @@ export interface BannerCustomization {
     updatedAt: Date;
 }
 
+export interface BannerTranslation {
+    id: string;
+    websiteId: string;
+    languageCode: string;
+    headlineText: string;
+    descriptionText: string;
+    acceptButtonText: string;
+    rejectButtonText: string;
+    preferencesButtonText: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface BannerWithTranslations {
+    styles: Omit<BannerCustomization, 'acceptButtonText' | 'rejectButtonText' | 'customizeButtonText'>;
+    translations: BannerTranslation[];
+}
+
 // ==================== Audit Types ====================
 
 export interface TenantAuditLog {

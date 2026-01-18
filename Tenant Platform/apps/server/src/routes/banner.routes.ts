@@ -136,4 +136,63 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
             reply.type('text/html').send(html);
         }
     );
+
+    // ==================== TRANSLATION ROUTES ====================
+
+    /**
+     * GET /tenant/websites/:id/banner/translations
+     * Get all banner translations for a website
+     */
+    app.get<{ Params: { id: string } }>(
+        '/websites/:id/banner/translations',
+        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+            const { tenantId } = getCurrentUser(request);
+
+            // Verify website access
+            const translations = await bannerService.getTranslations(websiteId, tenantId);
+
+            return {
+                success: true,
+                data: translations,
+            };
+        }
+    );
+
+    /**
+     * POST /tenant/websites/:id/banner/translations
+     * Create or update banner translations
+     */
+    app.post<{ Params: { id: string } }>(
+        '/websites/:id/banner/translations',
+        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+            const { userId, tenantId } = getCurrentUser(request);
+            const requestInfo = getRequestInfo(request);
+            const { translations } = request.body as {
+                translations: Array<{
+                    languageCode: string;
+                    headlineText: string;
+                    descriptionText: string;
+                    acceptButtonText: string;
+                    rejectButtonText: string;
+                    preferencesButtonText: string;
+                }>;
+            };
+
+            const result = await bannerService.upsertTranslations(
+                websiteId,
+                tenantId,
+                userId,
+                translations,
+                requestInfo
+            );
+
+            return {
+                success: true,
+                data: result,
+                message: 'Banner translations saved successfully',
+            };
+        }
+    );
 }

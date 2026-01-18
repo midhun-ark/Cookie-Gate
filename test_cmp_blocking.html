@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComplyArk CMP Test Page</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f9fafb;
+            color: #111827;
+        }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        h2 { font-size: 18px; color: #4f46e5; margin-top: 32px; }
+        p { color: #6b7280; line-height: 1.6; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .status.blocked { background: #fef2f2; color: #dc2626; }
+        .status.allowed { background: #f0fdf4; color: #16a34a; }
+        .status.waiting { background: #fffbeb; color: #d97706; }
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 8px;
+            margin-top: 8px;
+        }
+        .btn-primary { background: #4f46e5; color: white; }
+        .btn-secondary { background: #f3f4f6; color: #374151; }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        #log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+        .log-entry { margin: 4px 0; }
+        .log-entry.info { color: #60a5fa; }
+        .log-entry.warn { color: #fbbf24; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.success { color: #4ade80; }
+    </style>
+    
+    <!-- 
+    ==========================================
+    COMPLYARK LOADER - MUST BE FIRST SCRIPT
+    ==========================================
+    Replace YOUR_WEBSITE_ID with your actual website ID from the Tenant Platform
+    -->
+    <script src="http://localhost:3001/public/loader.js?id=YOUR_WEBSITE_ID"></script>
+    
+    <!-- 
+    ==========================================
+    BLOCKED SCRIPTS - These wait for consent
+    ==========================================
+    -->
+    
+    <!-- Essential script - always runs -->
+    <script type="text/plain" data-purpose="essential">
+        console.log('[TEST] ✅ Essential script executed');
+        window.__essentialRan = true;
+    </script>
+    
+    <!-- Analytics script - blocked until 'analytics' consent -->
+    <script type="text/plain" data-purpose="analytics">
+        console.log('[TEST] 📊 Analytics script executed');
+        window.__analyticsRan = true;
+    </script>
+    
+    <!-- Marketing script - blocked until 'marketing' consent -->
+    <script type="text/plain" data-purpose="marketing">
+        console.log('[TEST] 📢 Marketing script executed');
+        window.__marketingRan = true;
+    </script>
+    
+    <!-- Unknown purpose - BLOCKED FOREVER -->
+    <script type="text/plain" data-purpose="unknown_purpose">
+        console.log('[TEST] ⚠️ Unknown purpose script - SHOULD NEVER RUN');
+        window.__unknownRan = true;
+    </script>
+    
+</head>
+<body>
+    <h1>🛡️ ComplyArk CMP Test Page</h1>
+    <p>This page tests the ComplyArk Consent Management Platform's script blocking functionality.</p>
+    
+    <div class="card">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Start the Tenant Platform server (<code>npm run dev</code>)</li>
+            <li>Replace <code>YOUR_WEBSITE_ID</code> in this file with a valid Website ID</li>
+            <li>Open this page in a browser</li>
+            <li>Check console logs and the status indicators below</li>
+        </ol>
+    </div>
+    
+    <div class="card">
+        <h2>Script Execution Status</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px 0;"><strong>Essential (always allowed)</strong></td>
+                <td id="status-essential" style="text-align: right;"><span class="status waiting">Waiting...</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px 0;"><strong>Analytics (needs consent)</strong></td>
+                <td id="status-analytics" style="text-align: right;"><span class="status waiting">Waiting...</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px 0;"><strong>Marketing (needs consent)</strong></td>
+                <td id="status-marketing" style="text-align: right;"><span class="status waiting">Waiting...</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 0;"><strong>Unknown Purpose (blocked forever)</strong></td>
+                <td id="status-unknown" style="text-align: right;"><span class="status blocked">Blocked</span></td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="card">
+        <h2>JavaScript API Test</h2>
+        <button class="btn-primary" onclick="openSettings()">Open Settings</button>
+        <button class="btn-secondary" onclick="checkConsent()">Check Consent</button>
+        <button class="btn-secondary" onclick="withdrawConsent()">Withdraw Consent</button>
+        <button class="btn-secondary" onclick="clearStorage()">Clear Storage</button>
+    </div>
+    
+    <div class="card">
+        <h2>Console Log</h2>
+        <div id="log-output"></div>
+    </div>
+    
+    <!-- Blocked tracking pixel -->
+    <img data-src="https://via.placeholder.com/1x1?text=PIXEL" data-purpose="marketing" style="display: none;" />
+    
+    <!-- Blocked iframe -->
+    <iframe data-src="https://example.com" data-purpose="marketing" style="display: none;"></iframe>
+    
+    <script>
+        // Intercept console.log for display
+        var logOutput = document.getElementById('log-output');
+        var originalLog = console.log;
+        var originalWarn = console.warn;
+        var originalError = console.error;
+        
+        function addLog(msg, type) {
+            var entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = msg;
+            logOutput.appendChild(entry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        console.log = function() {
+            var msg = Array.from(arguments).join(' ');
+            originalLog.apply(console, arguments);
+            addLog(msg, 'info');
+            updateStatus();
+        };
+        
+        console.warn = function() {
+            var msg = Array.from(arguments).join(' ');
+            originalWarn.apply(console, arguments);
+            addLog(msg, 'warn');
+        };
+        
+        console.error = function() {
+            var msg = Array.from(arguments).join(' ');
+            originalError.apply(console, arguments);
+            addLog(msg, 'error');
+        };
+        
+        function updateStatus() {
+            if (window.__essentialRan) {
+                document.getElementById('status-essential').innerHTML = '<span class="status allowed">✓ Executed</span>';
+            }
+            if (window.__analyticsRan) {
+                document.getElementById('status-analytics').innerHTML = '<span class="status allowed">✓ Executed</span>';
+            }
+            if (window.__marketingRan) {
+                document.getElementById('status-marketing').innerHTML = '<span class="status allowed">✓ Executed</span>';
+            }
+            if (window.__unknownRan) {
+                document.getElementById('status-unknown').innerHTML = '<span class="status error">⚠ SECURITY FAILURE</span>';
+            }
+        }
+        
+        // Listen for consent events
+        window.addEventListener('complyark:consent', function(e) {
+            addLog('🎉 Consent event received: ' + JSON.stringify(e.detail), 'success');
+            setTimeout(updateStatus, 100);
+        });
+        
+        function openSettings() {
+            if (window.ComplyArk) {
+                ComplyArk.openSettings();
+                addLog('Opening settings panel...', 'info');
+            } else {
+                addLog('ComplyArk not loaded yet', 'error');
+            }
+        }
+        
+        function checkConsent() {
+            if (window.ComplyArk) {
+                var consent = ComplyArk.getConsent();
+                addLog('Current consent: ' + JSON.stringify(consent), 'info');
+                
+                addLog('hasConsent("analytics"): ' + ComplyArk.hasConsent('analytics'), 'info');
+                addLog('hasConsent("marketing"): ' + ComplyArk.hasConsent('marketing'), 'info');
+            } else {
+                addLog('ComplyArk not loaded yet', 'error');
+            }
+        }
+        
+        function withdrawConsent() {
+            if (window.ComplyArk) {
+                ComplyArk.withdrawConsent();
+                addLog('Consent withdrawn, banner should appear', 'warn');
+            } else {
+                addLog('ComplyArk not loaded yet', 'error');
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('__complyark_consent__');
+            localStorage.removeItem('__complyark_user_lang__');
+            addLog('Storage cleared, refresh page to test fresh state', 'warn');
+        }
+        
+        // Initial status check
+        setTimeout(updateStatus, 1000);
+    </script>
+</body>
+</html>
