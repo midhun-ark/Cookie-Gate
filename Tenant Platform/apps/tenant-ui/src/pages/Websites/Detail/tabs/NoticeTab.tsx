@@ -164,6 +164,10 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const distinctCodes = Array.from(new Set(['en', ...activeCodes, ...Object.keys(formData)]));
     const sortedLanguages = distinctCodes.sort((a, b) => a === 'en' ? -1 : b === 'en' ? 1 : 0);
 
+    // Validation for mandatory fields
+    const enData = formData['en'] || defaultForm;
+    const isFormValid = isEmailValid && dpoEmail.trim() !== '' && enData.policyUrl.trim() !== '' && enData.rightsDescription.trim() !== '' && enData.withdrawalInstruction.trim() !== '' && enData.complaintInstruction.trim() !== '';
+
     return (
         <div style={{ paddingBottom: '80px' }}>
             {/* Header */}
@@ -214,7 +218,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                         </div>
                         <div style={{ padding: '16px' }}>
                             <div style={{ marginBottom: '0' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>DPO Email</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>DPO/Grievance Officer Email <span style={{ color: '#ef4444' }}>*</span></label>
                                 <input
                                     type="email"
                                     value={dpoEmail}
@@ -260,7 +264,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Full Policy Link</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Cookie Policy Link <span style={{ color: '#ef4444' }}>*</span></label>
                                 <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden' }}>
                                     <span style={{ padding: '8px 10px', background: '#f9fafb', fontSize: '12px', color: '#6b7280', borderRight: '1px solid #e5e7eb' }}>https://</span>
                                     <input
@@ -289,7 +293,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                         </div>
                         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>User Rights Description</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>User Rights Description <span style={{ color: '#ef4444' }}>*</span></label>
                                 <textarea
                                     value={currentData.rightsDescription}
                                     onChange={(e) => handleInputChange('rightsDescription', e.target.value)}
@@ -297,7 +301,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Withdrawal Instructions</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Withdrawal Instructions <span style={{ color: '#ef4444' }}>*</span></label>
                                 <textarea
                                     value={currentData.withdrawalInstruction}
                                     onChange={(e) => handleInputChange('withdrawalInstruction', e.target.value)}
@@ -305,7 +309,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Complaint Instructions</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Complaint Instructions <span style={{ color: '#ef4444' }}>*</span></label>
                                 <textarea
                                     value={currentData.complaintInstruction}
                                     onChange={(e) => handleInputChange('complaintInstruction', e.target.value)}
@@ -333,8 +337,8 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                         </button>
                         <button
                             onClick={() => saveMutation.mutate()}
-                            disabled={saveMutation.isPending || !isEmailValid}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saveMutation.isPending || !isEmailValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
+                            disabled={saveMutation.isPending || !isFormValid}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saveMutation.isPending || !isFormValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
                         >
                             <Save style={{ width: '14px', height: '14px' }} /> Save
                         </button>
