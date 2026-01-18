@@ -250,18 +250,7 @@ function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: s
                 )}
 
                 {/* Language Selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                    <Globe style={{ width: '14px', height: '14px', color: '#4f46e5' }} />
-                    <select
-                        value={selectedLang}
-                        onChange={(e) => { addLanguage(e.target.value); setSelectedLang(e.target.value); }}
-                        style={{ fontSize: '13px', fontWeight: 500, background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer', color: '#374151', flex: 1 }}
-                    >
-                        {languages.map((l: SupportedLanguage) => (
-                            <option key={l.code} value={l.code}>{l.name}</option>
-                        ))}
-                    </select>
-                </div>
+
 
                 <div>
                     <label style={labelStyle}>Purpose Name {selectedLang === 'en' && <span style={{ color: '#dc2626' }}>*</span>}</label>
