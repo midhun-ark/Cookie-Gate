@@ -8,6 +8,7 @@ import {
     List,
     Layout,
     Code,
+    Languages,
     CheckCircle,
     AlertTriangle,
     Play,
@@ -19,9 +20,10 @@ import { NoticeTab } from './tabs/NoticeTab';
 import { PurposesTab } from './tabs/PurposesTab';
 import { BannerTab } from './tabs/BannerTab';
 import { InstallTab } from './tabs/InstallTab';
+import { TranslationsTab } from './tabs/TranslationsTab';
 import './WebsiteDetail.css';
 
-type TabId = 'notice' | 'purposes' | 'banner' | 'install';
+type TabId = 'notice' | 'purposes' | 'banner' | 'translations' | 'install';
 
 export function WebsiteDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -78,6 +80,7 @@ export function WebsiteDetailPage() {
         { id: 'purposes', label: 'Purposes', icon: List },
         { id: 'notice', label: 'Notice', icon: FileText },
         { id: 'banner', label: 'Banner', icon: Layout },
+        { id: 'translations', label: 'Translations', icon: Languages },
         { id: 'install', label: 'Install', icon: Code },
     ];
 
@@ -85,50 +88,95 @@ export function WebsiteDetailPage() {
         <div className="website-detail-page">
             <div className="container">
                 {/* Header */}
-                <div className="page-header">
-                    <div className="flex items-center gap-4">
+                <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: '16px',
+                    padding: '24px 28px',
+                    marginTop: '24px',
+                    marginBottom: '24px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.25)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                         <button
-                            className="btn btn-ghost btn-icon"
                             onClick={() => navigate('/websites')}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                border: 'none',
+                                borderRadius: '12px',
+                                padding: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backdropFilter: 'blur(4px)'
+                            }}
                         >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={20} style={{ color: '#fff' }} />
                         </button>
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            padding: '14px',
+                            borderRadius: '14px',
+                            backdropFilter: 'blur(8px)'
+                        }}>
+                            <Globe size={28} style={{ color: '#fff' }} />
+                        </div>
                         <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold">{website.domain}</h1>
-                                <StatusBadge status={website.status} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#fff', margin: 0 }}>{website.domain}</h1>
+                                <span style={{
+                                    background: website.status === 'ACTIVE' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 191, 36, 0.9)',
+                                    color: '#fff',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    padding: '4px 12px',
+                                    borderRadius: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                }}>
+                                    <CheckCircle size={12} />
+                                    {website.status === 'ACTIVE' ? 'Active' : website.status}
+                                </span>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                                <Globe size={14} />
-                                {website.id}
+                            <div style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '6px' }}>
+                                Website ID: {website.id.slice(0, 8)}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        {website.status === 'DRAFT' && (
-                            <span
-                                title={
-                                    !canActivate?.canActivate
-                                        ? canActivate?.reasons.join('\n')
-                                        : 'Activate Consent Management'
-                                }
-                            >
-                                <button
-                                    className="btn btn-primary"
-                                    disabled={!canActivate?.canActivate || activateMutation.isPending}
-                                    onClick={() => activateMutation.mutate()}
-                                >
-                                    {activateMutation.isPending ? (
-                                        <Loader2 className="animate-spin" size={18} />
-                                    ) : (
-                                        <Play size={18} />
-                                    )}
-                                    Activate
-                                </button>
-                            </span>
-                        )}
-                    </div>
+                    {website.status === 'DRAFT' && (
+                        <button
+                            disabled={!canActivate?.canActivate || activateMutation.isPending}
+                            onClick={() => activateMutation.mutate()}
+                            title={!canActivate?.canActivate ? canActivate?.reasons.join('\n') : 'Activate Consent Management'}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                color: '#764ba2',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '12px 24px',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: canActivate?.canActivate ? 'pointer' : 'not-allowed',
+                                opacity: canActivate?.canActivate ? 1 : 0.6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                            }}
+                        >
+                            {activateMutation.isPending ? (
+                                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <Play size={16} />
+                            )}
+                            Activate
+                        </button>
+                    )}
                 </div>
 
                 {activateError && (
@@ -178,6 +226,7 @@ export function WebsiteDetailPage() {
                         {activeTab === 'notice' && <NoticeTab websiteId={website.id} />}
                         {activeTab === 'purposes' && <PurposesTab websiteId={website.id} />}
                         {activeTab === 'banner' && <BannerTab websiteId={website.id} />}
+                        {activeTab === 'translations' && <TranslationsTab websiteId={website.id} />}
                         {activeTab === 'install' && <InstallTab website={website} />}
                     </div>
                 </div>

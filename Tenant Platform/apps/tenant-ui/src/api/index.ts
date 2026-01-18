@@ -8,7 +8,6 @@ import type {
     Website,
     CanActivateResult,
     WebsiteNotice,
-    NoticeTranslation,
     Purpose,
     BannerCustomization,
     AuditLog,
@@ -143,28 +142,6 @@ export const noticeApi = {
         dpoEmail?: string
     ): Promise<void> => {
         await api.patch(`/notices/${noticeId}/translations`, { translations, dpoEmail });
-    },
-
-    autoTranslate: async (
-        websiteId: string,
-        targetLang: string
-    ): Promise<NoticeTranslation> => {
-        const response = await api.post<ApiResponse<NoticeTranslation>>(
-            `/websites/${websiteId}/notices/auto-translate`,
-            { targetLang }
-        );
-        return response.data.data!;
-    },
-
-    autoTranslateBatch: async (
-        websiteId: string,
-        targetLangs: string[]
-    ): Promise<NoticeTranslation[]> => {
-        const response = await api.post<ApiResponse<NoticeTranslation[]>>(
-            `/websites/${websiteId}/notices/auto-translate-batch`,
-            { targetLangs }
-        );
-        return response.data.data!;
     },
 };
 

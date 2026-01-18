@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, AlertCircle, CheckCircle, Wand2, Globe, Building2, FileText, Shield } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Globe, Building2, FileText, Shield } from 'lucide-react';
 import { noticeApi } from '@/api';
 import { useLanguages } from '@/hooks';
 import { getErrorMessage } from '@/api/client';
@@ -11,7 +11,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const [dpoEmail, setDpoEmail] = useState('');
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [error, setError] = useState('');
-    const [isTranslating, setIsTranslating] = useState(false);
+
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isEmailValid = !dpoEmail || dpoEmail.trim() === '' || emailRegex.test(dpoEmail);
@@ -100,31 +100,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         if (error) setError('');
     };
 
-    const handleAutoTranslate = async () => {
-        setIsTranslating(true);
-        setError('');
-        try {
-            const t = await noticeApi.autoTranslate(websiteId, selectedLang);
-            setFormData(prev => ({
-                ...prev,
-                [selectedLang]: {
-                    title: t.title,
-                    description: t.description,
-                    policyUrl: t.policyUrl || prev[selectedLang]?.policyUrl || '',
-                    rightsDescription: t.rightsDescription || '',
-                    withdrawalInstruction: t.withdrawalInstruction || '',
-                    complaintInstruction: t.complaintInstruction || '',
-                }
-            }));
-            queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (err) {
-            setError(getErrorMessage(err));
-        } finally {
-            setIsTranslating(false);
-        }
-    };
+
 
     const currentData = formData[selectedLang] || defaultForm;
 
@@ -161,16 +137,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                             ))}
                         </select>
                     </div>
-                    {selectedLang !== 'en' && (
-                        <button
-                            onClick={handleAutoTranslate}
-                            disabled={isTranslating}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}
-                        >
-                            <Wand2 style={{ width: '12px', height: '12px' }} />
-                            {isTranslating ? 'Translating...' : 'Auto-Fill'}
-                        </button>
-                    )}
+
                 </div>
             </div>
 

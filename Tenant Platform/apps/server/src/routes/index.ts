@@ -8,3 +8,4 @@ export * from './language.routes';
 export * from './loader.routes';
 export * from './runtime.routes';
 export * from './translation.routes';
+export * from './website-translation.routes';

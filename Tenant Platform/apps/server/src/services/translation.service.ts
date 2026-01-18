@@ -76,6 +76,15 @@ export class TranslationService {
             }
         }
 
+        // Log request details
+        console.log('\n========== TRANSLATION REQUEST ==========');
+        console.log('URL:', modelUrl);
+        console.log('Source Lang:', sourceLang, '→', this.getIndicTrans2LangCode(sourceLang));
+        console.log('Target Lang:', targetLang, '→', this.getIndicTrans2LangCode(targetLang));
+        console.log('Text:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+        console.log('Payload:', JSON.stringify(payload, null, 2));
+        console.log('==========================================\n');
+
         try {
             const response = await fetch(modelUrl, {
                 headers: {
@@ -86,18 +95,25 @@ export class TranslationService {
                 body: JSON.stringify(payload),
             });
 
+            const responseText = await response.text();
+
+            // Log response details
+            console.log('\n========== TRANSLATION RESPONSE ==========');
+            console.log('Status:', response.status, response.statusText);
+            console.log('Response Body:', responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''));
+            console.log('===========================================\n');
+
             if (!response.ok) {
-                const errorText = await response.text();
-                // 405 Method Not Allowed often means wrong path. 
-                // If it's a Gradio space, we might need to wrap in { data: [...] } and post to /api/predict
-                // But for now, let's try this standard inference payload structure.
-                throw new Error(`Translation API error: ${response.status} ${response.statusText} - ${errorText}`);
+                throw new Error(`Translation API error: ${response.status} ${response.statusText} - ${responseText}`);
             }
 
-            const result = await response.json() as any;
+            const result = JSON.parse(responseText) as any;
 
             // Handle Verified Custom Response: { "translated_text": "..." }
-            if (result.translated_text) return result.translated_text;
+            if (result.translated_text) {
+                console.log('✓ Translated:', result.translated_text.substring(0, 80) + '...');
+                return result.translated_text;
+            }
 
             // Handle Standard HF: [{ translation_text: "..." }]
             if (Array.isArray(result) && result.length > 0) {
@@ -116,7 +132,9 @@ export class TranslationService {
             throw new Error('Invalid response format from translation API');
 
         } catch (error) {
-            console.error("Translation failed:", error);
+            console.error("\n========== TRANSLATION ERROR ==========");
+            console.error("Error:", error);
+            console.error("========================================\n");
             throw error;
         }
     }
