@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, AlertCircle, CheckCircle, Wand2, Eye, X, Globe, Building2, FileText, Shield } from 'lucide-react';
-import { noticeApi, purposeApi } from '@/api';
+import { Save, AlertCircle, CheckCircle, Wand2, Globe, Building2, FileText, Shield } from 'lucide-react';
+import { noticeApi } from '@/api';
 import { useLanguages } from '@/hooks';
-import { NoticePreview } from '@/components';
 import { getErrorMessage } from '@/api/client';
-import { NoticeTranslation } from '@/types';
 
 export function NoticeTab({ websiteId }: { websiteId: string }) {
     const queryClient = useQueryClient();
@@ -18,17 +16,9 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isEmailValid = !dpoEmail || dpoEmail.trim() === '' || emailRegex.test(dpoEmail);
 
-    const [showPreview, setShowPreview] = useState(false);
-    const [previewLang, setPreviewLang] = useState('en');
-
     const { data: notice, isLoading: isLoadingNotice } = useQuery({
         queryKey: ['notice', websiteId],
         queryFn: () => noticeApi.get(websiteId),
-    });
-
-    const { data: purposes } = useQuery({
-        queryKey: ['purposes', websiteId],
-        queryFn: () => purposeApi.list(websiteId),
     });
 
     const { languages } = useLanguages();
@@ -137,24 +127,6 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     };
 
     const currentData = formData[selectedLang] || defaultForm;
-    const previewData = formData[previewLang] || defaultForm;
-    const previewTranslation: Partial<NoticeTranslation> = {
-        languageCode: previewLang,
-        title: previewData.title,
-        description: previewData.description,
-        policyUrl: previewData.policyUrl,
-        dataCategories: [],
-        processingPurposes: purposes
-            ? purposes.filter(p => p.status === 'ACTIVE').sort((a, b) => a.displayOrder - b.displayOrder)
-                .map(p => {
-                    const trans = p.translations.find(t => t.languageCode === previewLang) || p.translations.find(t => t.languageCode === 'en');
-                    return trans?.name || 'Unnamed Purpose';
-                })
-            : [],
-        rightsDescription: previewData.rightsDescription,
-        withdrawalInstruction: previewData.withdrawalInstruction,
-        complaintInstruction: previewData.complaintInstruction
-    };
 
     if (isLoadingNotice) {
         return <div className="p-8 text-center flex justify-center"><div className="spinner w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -169,7 +141,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const isFormValid = isEmailValid && dpoEmail.trim() !== '' && enData.policyUrl.trim() !== '' && enData.rightsDescription.trim() !== '' && enData.withdrawalInstruction.trim() !== '' && enData.complaintInstruction.trim() !== '';
 
     return (
-        <div style={{ paddingBottom: '80px' }}>
+        <div style={{ paddingBottom: '40px' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
@@ -318,65 +290,22 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Footer Action Bar */}
-            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px 24px', zIndex: 30, boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* SAVE BUTTON and Messages */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                         {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
                         {saveSuccess && <span style={{ fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle style={{ width: '12px', height: '12px' }} /> Saved</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button
-                            onClick={() => { setPreviewLang(selectedLang); setShowPreview(true); }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}
-                        >
-                            <Eye style={{ width: '14px', height: '14px' }} /> Preview
-                        </button>
                         <button
                             onClick={() => saveMutation.mutate()}
                             disabled={saveMutation.isPending || !isFormValid}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saveMutation.isPending || !isFormValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 24px', fontSize: '13px', fontWeight: 600, background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: saveMutation.isPending || !isFormValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
                         >
-                            <Save style={{ width: '14px', height: '14px' }} /> Save
+                            <Save style={{ width: '14px', height: '14px' }} /> Save Changes
                         </button>
                     </div>
+
                 </div>
             </div>
-
-            {/* Preview Modal */}
-            {showPreview && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setShowPreview(false)}>
-                    <div style={{ background: '#fff', borderRadius: '12px', width: '100%', maxWidth: '700px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Notice Preview</h3>
-                                <select
-                                    value={previewLang}
-                                    onChange={(e) => setPreviewLang(e.target.value)}
-                                    style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    {sortedLanguages.map(lang => (
-                                        <option key={lang} value={lang}>{languages?.find(l => l.code === lang)?.name || lang}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button onClick={() => setShowPreview(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
-                                <X style={{ width: '20px', height: '20px' }} />
-                            </button>
-                        </div>
-                        <div style={{ padding: '24px', overflowY: 'auto', background: '#f3f4f6', display: 'flex', justifyContent: 'center' }}>
-                            <NoticePreview translation={previewTranslation} dpoEmail={dpoEmail} showLanguageBadge={true} />
-                        </div>
-                        <div style={{ padding: '12px 20px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setShowPreview(false)} style={{ padding: '6px 14px', fontSize: '13px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}>Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
