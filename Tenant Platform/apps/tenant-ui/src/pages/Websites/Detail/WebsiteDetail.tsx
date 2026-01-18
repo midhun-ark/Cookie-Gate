@@ -107,23 +107,26 @@ export function WebsiteDetailPage() {
 
                     <div className="flex gap-2">
                         {website.status === 'DRAFT' && (
-                            <button
-                                className="btn btn-primary"
-                                disabled={!canActivate?.canActivate || activateMutation.isPending}
-                                onClick={() => activateMutation.mutate()}
+                            <span
                                 title={
                                     !canActivate?.canActivate
                                         ? canActivate?.reasons.join('\n')
                                         : 'Activate Consent Management'
                                 }
                             >
-                                {activateMutation.isPending ? (
-                                    <Loader2 className="animate-spin" size={18} />
-                                ) : (
-                                    <Play size={18} />
-                                )}
-                                Activate
-                            </button>
+                                <button
+                                    className="btn btn-primary"
+                                    disabled={!canActivate?.canActivate || activateMutation.isPending}
+                                    onClick={() => activateMutation.mutate()}
+                                >
+                                    {activateMutation.isPending ? (
+                                        <Loader2 className="animate-spin" size={18} />
+                                    ) : (
+                                        <Play size={18} />
+                                    )}
+                                    Activate
+                                </button>
+                            </span>
                         )}
                     </div>
                 </div>

@@ -12,6 +12,8 @@
 
 const { Client } = require('pg');
 const bcrypt = require('bcrypt');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // ===== CONFIG (EDIT BEFORE RUNNING) =====
 const ADMIN_EMAIL = 'admin@complyark.internal';
@@ -22,11 +24,7 @@ const SALT_ROUNDS = 12;
 
 async function setupSuperAdmin() {
     const client = new Client({
-        host: 'localhost',
-        port: 5433,
-        user: 'ark',
-        password: 'arkpass',
-        database: 'ark_db',
+        connectionString: process.env.DATABASE_URL || `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
     });
 
     try {

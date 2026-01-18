@@ -4,8 +4,8 @@
     "private": true,
     "scripts": {
         "migrate:create": "node-pg-migrate create",
-        "migrate:up": "DATABASE_URL=postgres://postgres:password@localhost:5445/complyark node-pg-migrate up",
-        "migrate:down": "DATABASE_URL=postgres://postgres:password@localhost:5445/complyark node-pg-migrate down",
+        "migrate:up": "node-pg-migrate up",
+        "migrate:down": "node-pg-migrate down",
         "start": "ts-node src/app.ts",
         "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
         "build": "tsc",

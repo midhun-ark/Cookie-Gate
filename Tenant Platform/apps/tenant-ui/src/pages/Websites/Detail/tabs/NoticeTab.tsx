@@ -14,7 +14,10 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [error, setError] = useState('');
     const [isTranslating, setIsTranslating] = useState(false);
-    const [isBatchTranslating, setIsBatchTranslating] = useState(false);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailValid = !dpoEmail || dpoEmail.trim() === '' || emailRegex.test(dpoEmail);
+
     const [showPreview, setShowPreview] = useState(false);
     const [previewLang, setPreviewLang] = useState('en');
 
@@ -30,7 +33,6 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
 
     const { languages } = useLanguages();
 
-    // Form state
     interface NoticeFormData {
         title: string;
         description: string;
@@ -49,11 +51,8 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         complaintInstruction: 'Unresolved? You may complain to the Data Protection Board.'
     };
 
-
-
     const [formData, setFormData] = useState<{ [lang: string]: NoticeFormData }>({});
 
-    // Initialize form data when notice loads
     useEffect(() => {
         if (notice) {
             setDpoEmail(notice.dpoEmail || '');
@@ -81,9 +80,6 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
                 title: data.title,
                 description: data.description,
                 policyUrl: data.policyUrl || undefined,
-                // These are now managed via "Purposes" tab, so we send empty or existing?
-                // For now, sending empty arrays to clear them from notice_translations if they existed.
-                // The actual display will come from Purposes table.
                 dataCategories: [],
                 processingPurposes: [],
                 rightsDescription: data.rightsDescription,
@@ -94,10 +90,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
             if (notice) {
                 await noticeApi.updateTranslations(notice.id, translations, dpoEmail);
             } else {
-                await noticeApi.create(websiteId, {
-                    dpoEmail,
-                    translations
-                });
+                await noticeApi.create(websiteId, { dpoEmail, translations });
             }
         },
         onSuccess: () => {
@@ -105,30 +98,23 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
         },
-        onError: (err) => {
-            setError(getErrorMessage(err));
-        }
+        onError: (err) => setError(getErrorMessage(err)),
     });
 
     const handleInputChange = (field: keyof NoticeFormData, value: any) => {
         setFormData((prev) => ({
             ...prev,
-            [selectedLang]: {
-                ...prev[selectedLang] || defaultForm,
-                [field]: value,
-            },
+            [selectedLang]: { ...prev[selectedLang] || defaultForm, [field]: value },
         }));
         setSaveSuccess(false);
+        if (error) setError('');
     };
-
-
 
     const handleAutoTranslate = async () => {
         setIsTranslating(true);
         setError('');
         try {
             const t = await noticeApi.autoTranslate(websiteId, selectedLang);
-
             setFormData(prev => ({
                 ...prev,
                 [selectedLang]: {
@@ -150,54 +136,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         }
     };
 
-    const handleBatchTranslate = async () => {
-        if (!languages) return;
-        setIsBatchTranslating(true);
-        setError('');
-        try {
-            // Translate to all supported languages that are not 'en'
-            // Or just all languages not currently in formData? 
-            // Better to translate all active languages except En.
-            const targetLangs = languages
-                .filter(l => l.code !== 'en' && l.isActive)
-                .map(l => l.code);
-
-            if (targetLangs.length === 0) {
-                setError("No other languages available to translate.");
-                return;
-            }
-
-            const results = await noticeApi.autoTranslateBatch(websiteId, targetLangs);
-
-            // Update local state
-            setFormData(prev => {
-                const next = { ...prev };
-                results.forEach(t => {
-                    next[t.languageCode] = {
-                        title: t.title,
-                        description: t.description,
-                        policyUrl: t.policyUrl || '',
-                        rightsDescription: t.rightsDescription || '',
-                        withdrawalInstruction: t.withdrawalInstruction || '',
-                        complaintInstruction: t.complaintInstruction || '',
-                    };
-                });
-                return next;
-            });
-
-            queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (err) {
-            setError(getErrorMessage(err));
-        } finally {
-            setIsBatchTranslating(false);
-        }
-    };
-
     const currentData = formData[selectedLang] || defaultForm;
-
-    // Map current form data (or default) for the PREVIEW language
     const previewData = formData[previewLang] || defaultForm;
     const previewTranslation: Partial<NoticeTranslation> = {
         languageCode: previewLang,
@@ -206,11 +145,8 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         policyUrl: previewData.policyUrl,
         dataCategories: [],
         processingPurposes: purposes
-            ? purposes
-                .filter(p => p.status === 'ACTIVE')
-                .sort((a, b) => a.displayOrder - b.displayOrder)
+            ? purposes.filter(p => p.status === 'ACTIVE').sort((a, b) => a.displayOrder - b.displayOrder)
                 .map(p => {
-                    // Try to find translation for previewLang, fall back to EN, then to first available
                     const trans = p.translations.find(t => t.languageCode === previewLang) || p.translations.find(t => t.languageCode === 'en');
                     return trans?.name || 'Unnamed Purpose';
                 })
@@ -224,193 +160,156 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         return <div className="p-8 text-center flex justify-center"><div className="spinner w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
     }
 
-    // Use all active languages for the dropdown, ensuring 'en' is first
     const activeCodes = languages?.filter(l => l.isActive).map(l => l.code) || [];
     const distinctCodes = Array.from(new Set(['en', ...activeCodes, ...Object.keys(formData)]));
     const sortedLanguages = distinctCodes.sort((a, b) => a === 'en' ? -1 : b === 'en' ? 1 : 0);
 
     return (
-        <div className="h-full max-w-5xl mx-auto pb-24 relative">
-            {/* Top Language Bar */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 sticky top-0 z-20 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-gray-700">
-                        <Globe className="w-5 h-5 text-indigo-600" />
-                        <span className="font-semibold text-sm">Editing Language:</span>
-                    </div>
-
-                    <div className="relative group">
+        <div style={{ paddingBottom: '80px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Notice Editor</h2>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Configure your DPDPA-compliant privacy notice.</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Globe style={{ width: '16px', height: '16px', color: '#4f46e5' }} />
                         <select
                             value={selectedLang}
                             onChange={(e) => setSelectedLang(e.target.value)}
-                            className="form-select pl-4 pr-10 py-2 rounded-lg border-gray-300 bg-gray-50 hover:bg-white transition-colors cursor-pointer text-sm font-medium min-w-[140px] focus:ring-2 focus:ring-indigo-500"
+                            style={{ background: 'transparent', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer', outline: 'none' }}
                         >
                             {sortedLanguages.map(lang => (
-                                <option key={lang} value={lang}>
-                                    {languages?.find(l => l.code === lang)?.name || lang}
-                                </option>
+                                <option key={lang} value={lang}>{languages?.find(l => l.code === lang)?.name || lang}</option>
                             ))}
                         </select>
                     </div>
-
-                    {Object.keys(formData).length < (languages?.filter(l => l.isActive).length || 0) && (
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                            {Object.keys(formData).length} / {languages?.filter(l => l.isActive).length} Active
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {/* Auto-Translate Action */}
                     {selectedLang !== 'en' && (
                         <button
-                            className="btn btn-secondary btn-sm flex items-center gap-2"
                             onClick={handleAutoTranslate}
                             disabled={isTranslating}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}
                         >
-                            <Wand2 size={14} className={isTranslating ? "animate-spin" : ""} />
-                            {isTranslating ? 'Translating...' : `Auto-Fill from English`}
-                        </button>
-                    )}
-
-                    {/* Batch Add Missing */}
-                    {notice && (!notice.translations || notice.translations.length < (languages?.filter(l => l.isActive).length || 0)) && (
-                        <button
-                            onClick={handleBatchTranslate}
-                            disabled={isBatchTranslating}
-                            className="btn btn-secondary btn-sm flex items-center gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                        >
-                            {isBatchTranslating ? (
-                                <div className="spinner w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <Globe size={14} />
-                            )}
-                            <span className="text-xs font-medium">Add Missing Languages</span>
+                            <Wand2 style={{ width: '12px', height: '12px' }} />
+                            {isTranslating ? 'Translating...' : 'Auto-Fill'}
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="space-y-6">
+            {/* Two Column Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-                {/* 1. Organization Contact */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded-lg">
-                            <Building2 className="w-5 h-5 text-blue-600" />
+                {/* LEFT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                    {/* Organization Contact Card */}
+                    <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', background: '#f9fafb', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ background: '#dbeafe', padding: '6px', borderRadius: '6px' }}>
+                                <Building2 style={{ width: '14px', height: '14px', color: '#2563eb' }} />
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>Organization Contact</span>
                         </div>
-                        <div>
-                            <h3 className="text-base font-bold text-gray-900">Organization Contact</h3>
-                            <p className="text-xs text-gray-500">Contact details for DPDPA compliance queries.</p>
-                        </div>
-                    </div>
-                    <div className="p-6">
-                        <div className="max-w-xl">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">DPO / Grievance Officer Email <span className="text-red-500">*</span></label>
-                            <div className="relative">
+                        <div style={{ padding: '16px' }}>
+                            <div style={{ marginBottom: '0' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>DPO Email</label>
                                 <input
                                     type="email"
                                     value={dpoEmail}
-                                    onChange={e => setDpoEmail(e.target.value)}
-                                    className="form-input w-full pl-4 pr-4 py-2.5 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+                                    onChange={e => { setDpoEmail(e.target.value); if (error) setError(''); }}
                                     placeholder="privacy@yourcompany.com"
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: `1px solid ${!isEmailValid ? '#fca5a5' : '#d1d5db'}`, borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
                                 />
+                                {!isEmailValid && (
+                                    <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <AlertCircle style={{ width: '10px', height: '10px' }} /> Invalid email
+                                    </p>
+                                )}
                             </div>
-                            <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
-                                <AlertCircle size={12} />
-                                Required for legal compliance.
-                            </p>
                         </div>
                     </div>
-                </div>
 
-                {/* 2. Notice Content */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-lg">
-                            <FileText className="w-5 h-5 text-indigo-600" />
+                    {/* Notice Content Card */}
+                    <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', background: '#f9fafb', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ background: '#e0e7ff', padding: '6px', borderRadius: '6px' }}>
+                                <FileText style={{ width: '14px', height: '14px', color: '#4f46e5' }} />
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>Notice Content</span>
                         </div>
-                        <div>
-                            <h3 className="text-base font-bold text-gray-900">Notice Content ({selectedLang.toUpperCase()})</h3>
-                            <p className="text-xs text-gray-500">Core content of your privacy notice.</p>
-                        </div>
-                    </div>
-                    <div className="p-6 grid grid-cols-1 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Notice Title <span className="text-red-500">*</span></label>
-                            <input
-                                type="text"
-                                className="form-input w-full text-lg font-medium"
-                                value={currentData.title}
-                                onChange={(e) => handleInputChange('title', e.target.value)}
-                                placeholder="e.g. Privacy Notice"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Main Description <span className="text-red-500">*</span></label>
-                            <textarea
-                                className="form-textarea w-full"
-                                rows={4}
-                                value={currentData.description}
-                                onChange={(e) => handleInputChange('description', e.target.value)}
-                                placeholder="Explain how you use cookies and data..."
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Policy Link</label>
-                            <div className="flex rounded-md shadow-sm">
-                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">https://</span>
+                        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Notice Title <span style={{ color: '#ef4444' }}>*</span></label>
                                 <input
                                     type="text"
-                                    className="form-input w-full rounded-none rounded-r-md"
-                                    value={currentData.policyUrl?.replace(/^https?:\/\//, '') || ''}
-                                    onChange={(e) => handleInputChange('policyUrl', 'https://' + e.target.value.replace(/^https?:\/\//, ''))}
-                                    placeholder="example.com/privacy-policy"
+                                    value={currentData.title}
+                                    onChange={(e) => handleInputChange('title', e.target.value)}
+                                    placeholder="Privacy Notice"
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
                                 />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Main Description <span style={{ color: '#ef4444' }}>*</span></label>
+                                <textarea
+                                    value={currentData.description}
+                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    placeholder="We use cookies to improve your experience..."
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '80px', resize: 'vertical', boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Full Policy Link</label>
+                                <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden' }}>
+                                    <span style={{ padding: '8px 10px', background: '#f9fafb', fontSize: '12px', color: '#6b7280', borderRight: '1px solid #e5e7eb' }}>https://</span>
+                                    <input
+                                        type="text"
+                                        value={currentData.policyUrl?.replace(/^https?:\/\//, '') || ''}
+                                        onChange={(e) => handleInputChange('policyUrl', 'https://' + e.target.value.replace(/^https?:\/\//, ''))}
+                                        placeholder="example.com/privacy"
+                                        style={{ flex: 1, padding: '8px 12px', fontSize: '13px', border: 'none', outline: 'none', boxSizing: 'border-box' }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 3. Rights & Redressal */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                        <div className="bg-green-100 p-2 rounded-lg">
-                            <Shield className="w-5 h-5 text-green-600" />
-                        </div>
-                        <div>
-                            <h3 className="text-base font-bold text-gray-900">User Rights & Redressal ({selectedLang.toUpperCase()})</h3>
-                            <p className="text-xs text-gray-500">Mandatory DPDPA disclosures regarding user rights.</p>
-                        </div>
-                    </div>
-                    <div className="p-6 space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">User Rights Description</label>
-                            <textarea
-                                className="form-input w-full min-h-[80px]"
-                                value={currentData.rightsDescription}
-                                onChange={(e) => handleInputChange('rightsDescription', e.target.value)}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Explain rights to access, correction, erasure, and grievance redressal.</p>
-                        </div>
+                {/* RIGHT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* User Rights Card */}
+                    <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', background: '#f9fafb', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ background: '#dcfce7', padding: '6px', borderRadius: '6px' }}>
+                                <Shield style={{ width: '14px', height: '14px', color: '#16a34a' }} />
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>User Rights & Redressal</span>
+                        </div>
+                        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Withdrawal Instructions</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>User Rights Description</label>
                                 <textarea
-                                    className="form-input w-full min-h-[100px]"
-                                    value={currentData.withdrawalInstruction}
-                                    onChange={(e) => handleInputChange('withdrawalInstruction', e.target.value)}
+                                    value={currentData.rightsDescription}
+                                    onChange={(e) => handleInputChange('rightsDescription', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Complaint Instructions</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Withdrawal Instructions</label>
                                 <textarea
-                                    className="form-input w-full min-h-[100px]"
+                                    value={currentData.withdrawalInstruction}
+                                    onChange={(e) => handleInputChange('withdrawalInstruction', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Complaint Instructions</label>
+                                <textarea
                                     value={currentData.complaintInstruction}
                                     onChange={(e) => handleInputChange('complaintInstruction', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
                                 />
                             </div>
                         </div>
@@ -419,67 +318,57 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
             </div>
 
             {/* Footer Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-8 py-4 z-30 shadow-lg-up">
-                <div className="max-w-5xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {error && <span className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 flex items-center gap-1"><AlertCircle size={14} /> {error}</span>}
-                        {saveSuccess && <span className="text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-100 flex items-center gap-1"><CheckCircle size={14} /> Saved successfully</span>}
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px 24px', zIndex: 30, boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
+                        {saveSuccess && <span style={{ fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle style={{ width: '12px', height: '12px' }} /> Saved</span>}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <button
-                            className="btn btn-white border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                            onClick={() => {
-                                setPreviewLang(selectedLang);
-                                setShowPreview(true);
-                            }}
+                            onClick={() => { setPreviewLang(selectedLang); setShowPreview(true); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}
                         >
-                            <Eye size={18} />
-                            Preview
+                            <Eye style={{ width: '14px', height: '14px' }} /> Preview
                         </button>
                         <button
-                            className="btn btn-primary flex items-center gap-2 shadow-lg shadow-indigo-200 px-6"
                             onClick={() => saveMutation.mutate()}
-                            disabled={saveMutation.isPending}
+                            disabled={saveMutation.isPending || !isEmailValid}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saveMutation.isPending || !isEmailValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
                         >
-                            {saveMutation.isPending ? <div className="spinner w-4 h-4 border-2 border-white"></div> : <Save size={18} />}
-                            Save Configuration
+                            <Save style={{ width: '14px', height: '14px' }} /> Save
                         </button>
                     </div>
                 </div>
             </div>
 
+            {/* Preview Modal */}
             {showPreview && (
-                <div className="modal-overlay fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPreview(false)}>
-                    <div className="modal bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <div className="flex items-center gap-4">
-                                <h3 className="modal-title font-bold text-lg text-gray-900">Notice Preview</h3>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setShowPreview(false)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', width: '100%', maxWidth: '700px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Notice Preview</h3>
                                 <select
                                     value={previewLang}
                                     onChange={(e) => setPreviewLang(e.target.value)}
-                                    className="form-select pl-3 pr-8 py-1.5 rounded-lg border-gray-300 bg-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer"
+                                    style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
                                     onClick={e => e.stopPropagation()}
                                 >
                                     {sortedLanguages.map(lang => (
-                                        <option key={lang} value={lang}>
-                                            {languages?.find(l => l.code === lang)?.name || lang}
-                                        </option>
+                                        <option key={lang} value={lang}>{languages?.find(l => l.code === lang)?.name || lang}</option>
                                     ))}
                                 </select>
                             </div>
-                            <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowPreview(false)}>
-                                <X size={24} />
+                            <button onClick={() => setShowPreview(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+                                <X style={{ width: '20px', height: '20px' }} />
                             </button>
                         </div>
-                        <div className="modal-body p-8 overflow-y-auto bg-gray-100/50 flex justify-center">
-                            <NoticePreview
-                                translation={previewTranslation}
-                                dpoEmail={dpoEmail}
-                                showLanguageBadge={true}
-                            />
+                        <div style={{ padding: '24px', overflowY: 'auto', background: '#f3f4f6', display: 'flex', justifyContent: 'center' }}>
+                            <NoticePreview translation={previewTranslation} dpoEmail={dpoEmail} showLanguageBadge={true} />
                         </div>
-                        <div className="modal-footer px-6 py-4 border-t border-gray-100 flex justify-end">
-                            <button className="btn btn-secondary" onClick={() => setShowPreview(false)}>Close Preview</button>
+                        <div style={{ padding: '12px 20px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setShowPreview(false)} style={{ padding: '6px 14px', fontSize: '13px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}>Close</button>
                         </div>
                     </div>
                 </div>

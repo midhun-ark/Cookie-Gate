@@ -1,24 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    Trash2,
-    GripVertical,
-    AlertCircle,
-} from 'lucide-react';
+import { Trash2, GripVertical, AlertCircle, Plus, X } from 'lucide-react';
 import { purposeApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
 import type { Purpose } from '@/types';
 
-const COMMON_PURPOSES = [
-    { label: 'Necessary', value: 'strictly_necessary', desc: 'Required for the website to function properly.' },
-    { label: 'Functional', value: 'functional', desc: 'Help website to perform certain functionalities like sharing the content on social media platforms.' },
-    { label: 'Analytics', value: 'analytics', desc: 'Understand how visitors interact with the website.' },
-    { label: 'Performance', value: 'performance', desc: 'Analyze the key performance indexes to deliver better user experience.' },
-    { label: 'Advertisement', value: 'advertisement', desc: 'Provide visitors with relevant ads and marketing campaigns.' },
-];
-
 export function PurposesTab({ websiteId }: { websiteId: string }) {
     const queryClient = useQueryClient();
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
     const { data: purposes, isLoading } = useQuery({
@@ -28,109 +17,112 @@ export function PurposesTab({ websiteId }: { websiteId: string }) {
 
     const deleteMutation = useMutation({
         mutationFn: purposeApi.delete,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }),
     });
 
-    if (isLoading) {
-        return <div className="p-8 text-center"><div className="spinner"></div></div>;
-    }
+    const handleEdit = (id: string) => { setEditingId(id); setIsModalOpen(true); };
+    const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); };
+
+    if (isLoading) return <div style={{ padding: '32px', textAlign: 'center' }}><div className="spinner"></div></div>;
 
     return (
-        <div className="flex gap-6 items-start">
-            {/* Left Column - List */}
-            <div className="flex-1 space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                    <h2 className="tab-title mb-0">Configured Purposes</h2>
-                    <span className="text-sm text-gray-500">{purposes?.length || 0} active</span>
+        <div style={{ maxWidth: '700px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Configured Purposes</h2>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Manage the data processing purposes for this website.</p>
                 </div>
+                <button
+                    onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
+                >
+                    <Plus style={{ width: '14px', height: '14px' }} /> Add Purpose
+                </button>
+            </div>
 
-                <div className="space-y-3">
-                    {purposes && purposes.length > 0 ? (
-                        purposes
-                            .sort((a, b) => a.displayOrder - b.displayOrder)
-                            .map((purpose) => (
-                                <div
-                                    key={purpose.id}
-                                    className={`card p-4 flex items-center justify-between group transition-all ${editingId === purpose.id ? 'ring-2 ring-primary bg-primary/5' : ''}`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="cursor-move text-gray-400 hover:text-gray-600">
-                                            <GripVertical size={20} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-gray-900">
-                                                    {getTranslation(purpose, 'en')?.name || 'Unnamed Purpose'}
-                                                </h3>
-                                                <span className="badge badge-gray text-xs font-mono">{purpose.tag}</span>
-                                                {purpose.isEssential && (
-                                                    <span className="badge badge-gray text-xs">Essential</span>
-                                                )}
-                                                <span className={`badge ${purpose.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'} text-xs`}>
-                                                    {purpose.status}
-                                                </span>
-                                            </div>
-                                            {/* Description field removed from viewing as well if desired, or kept for legacy. Keeping simple view. */}
-                                        </div>
+            {/* Purpose List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {purposes && purposes.length > 0 ? (
+                    purposes.sort((a, b) => a.displayOrder - b.displayOrder).map((purpose) => (
+                        <div
+                            key={purpose.id}
+                            style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: 'border-color 0.2s' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <GripVertical style={{ width: '16px', height: '16px', color: '#9ca3af', cursor: 'move' }} />
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                                            {getTranslation(purpose, 'en')?.name || 'Unnamed Purpose'}
+                                        </span>
+                                        <span style={{ fontSize: '10px', fontFamily: 'monospace', background: '#f3f4f6', color: '#6b7280', padding: '2px 6px', borderRadius: '4px' }}>{purpose.tag}</span>
+                                        {purpose.isEssential && (
+                                            <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#6b7280', padding: '2px 6px', borderRadius: '4px' }}>Essential</span>
+                                        )}
+                                        <span style={{ fontSize: '10px', background: purpose.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: purpose.status === 'ACTIVE' ? '#16a34a' : '#d97706', padding: '2px 6px', borderRadius: '4px' }}>
+                                            {purpose.status}
+                                        </span>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            className="btn btn-ghost btn-sm"
-                                            onClick={() => setEditingId(editingId === purpose.id ? null : purpose.id)}
-                                        >
-                                            {editingId === purpose.id ? 'Cancel Edit' : 'Edit'}
-                                        </button>
-                                        <button
-                                            className="btn btn-ghost btn-sm text-error hover:bg-red-50"
-                                            onClick={() => {
-                                                if (confirm('Are you sure you want to delete this purpose?')) {
-                                                    deleteMutation.mutate(purpose.id);
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
+                                    <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {getTranslation(purpose, 'en')?.description}
+                                    </p>
                                 </div>
-                            ))
-                    ) : (
-                        <div className="empty-state card">
-                            <p className="text-gray-500">No purposes defined yet.</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                    onClick={() => handleEdit(purpose.id)}
+                                    style={{ padding: '6px 10px', fontSize: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#374151' }}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => { if (confirm('Delete this purpose?')) deleteMutation.mutate(purpose.id); }}
+                                    style={{ padding: '6px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', color: '#dc2626' }}
+                                >
+                                    <Trash2 style={{ width: '14px', height: '14px' }} />
+                                </button>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    ))
+                ) : (
+                    <div style={{ background: '#f9fafb', borderRadius: '8px', border: '1px dashed #d1d5db', padding: '40px', textAlign: 'center' }}>
+                        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>No purposes defined yet.</p>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '12px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}
+                        >
+                            <Plus style={{ width: '12px', height: '12px' }} /> Add Your First Purpose
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Right Column - Editor */}
-            <div className="w-[400px] shrink-0 sticky top-4">
-                <PurposeForm
-                    websiteId={websiteId}
-                    purpose={purposes?.find((p) => p.id === editingId)}
-                    key={editingId || 'new'} // Force re-mount on switch
-                    onCancel={() => setEditingId(null)}
-                    onSuccess={() => {
-                        setEditingId(null);
-                        queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] });
-                    }}
-                />
-            </div>
+            {/* Modal */}
+            {isModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={handleCloseModal}>
+                    <div style={{ background: '#fff', borderRadius: '12px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: '#111827' }}>{editingId ? 'Edit Purpose' : 'Add New Purpose'}</h3>
+                            <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+                                <X style={{ width: '20px', height: '20px' }} />
+                            </button>
+                        </div>
+                        <PurposeForm
+                            websiteId={websiteId}
+                            purpose={purposes?.find((p) => p.id === editingId)}
+                            key={editingId || 'new'}
+                            onCancel={handleCloseModal}
+                            onSuccess={() => { handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); }}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-function PurposeForm({
-    websiteId,
-    purpose,
-    onCancel,
-    onSuccess,
-}: {
-    websiteId: string;
-    purpose?: Purpose;
-    onCancel: () => void;
-    onSuccess: () => void;
-}) {
+function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: string; purpose?: Purpose; onCancel: () => void; onSuccess: () => void; }) {
     const queryClient = useQueryClient();
     const isEditing = !!purpose;
     const [isEssential, setIsEssential] = useState(purpose?.isEssential || false);
@@ -139,7 +131,6 @@ function PurposeForm({
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 
-    // Load initial state if editing
     useState(() => {
         if (purpose) {
             const en = purpose.translations.find(t => t.languageCode === 'en');
@@ -151,185 +142,91 @@ function PurposeForm({
     const saveMutation = useMutation({
         mutationFn: async () => {
             const transList = [{ languageCode: 'en', name, description }];
-
             if (isEditing) {
-                // Update settings
                 await purposeApi.update(purpose.id, { isEssential });
-                // Update translations
                 await purposeApi.updateTranslations(purpose.id, transList);
             } else {
-                // Create
-                await purposeApi.create(websiteId, {
-                    isEssential,
-                    tag,
-                    displayOrder: 0,
-                    translations: transList,
-                });
+                await purposeApi.create(websiteId, { isEssential, tag, displayOrder: 0, translations: transList });
             }
         },
         onSuccess,
         onError: (err) => setError(getErrorMessage(err)),
     });
 
-    const handleQuickSelect = (p: typeof COMMON_PURPOSES[0]) => {
-        setName(p.label);
-        setTag(p.value);
-        setDescription(p.desc);
-        setIsEssential(p.value === 'strictly_necessary');
-    };
+    const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' };
+    const labelStyle: React.CSSProperties = { display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' };
 
     return (
-        <div className="card p-0 border-gray-200 shadow-lg relative overflow-hidden bg-white rounded-xl">
-            {isEditing && (
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary/80 backdrop-blur-sm"></div>
-            )}
-
-            <div className="p-8 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="text-lg font-bold text-gray-900 flex justify-between items-center">
-                    {isEditing ? 'Edit Purpose' : 'Add New Purpose'}
-                    {isEditing && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest border border-primary/20">
-                            Editing
-                        </span>
-                    )}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                    {isEditing ? 'Modify the details of the selected purpose.' : 'Define a new data processing purpose for your website.'}
-                </p>
-            </div>
-
-            <div className="p-6 space-y-6">
+        <div>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {error && (
-                    <div className="alert alert-error mb-4 shadow-sm border border-red-100">
-                        <AlertCircle size={16} /> {error}
+                    <div style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <AlertCircle style={{ width: '14px', height: '14px' }} /> {error}
                     </div>
                 )}
-
-                {/* Quick Select Chips */}
-                {!isEditing && (
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            Start with a Template
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {COMMON_PURPOSES.map(cp => (
-                                <button
-                                    key={cp.value}
-                                    onClick={() => handleQuickSelect(cp)}
-                                    className={`group px-3 py-2 rounded-lg text-xs font-medium border transition-all duration-200 flex flex-col items-start gap-1 min-w-[100px] hover:-translate-y-0.5
-                                        ${tag === cp.value
-                                            ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                                            : 'bg-white text-gray-600 border-gray-200 hover:border-primary/30 hover:bg-primary/5 hover:text-primary'
-                                        }`}
-                                >
-                                    <span className="font-bold text-sm">{cp.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-5">
-                    <div className="form-group">
-                        <label className="form-label text-gray-700 font-medium">Purpose Name</label>
-                        <div className="relative group">
-                            <input
-                                type="text"
-                                className="form-input pl-3 transition-all group-hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                                value={name}
-                                onChange={(e) => {
-                                    setName(e.target.value);
-                                    if (!isEditing && !tag) {
-                                        setTag(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''));
-                                    }
-                                }}
-                                placeholder="e.g. Analytics"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label text-gray-700 font-medium">Description (Data Category)</label>
-                        <textarea
-                            className="form-input transition-all min-h-[80px] hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none py-2"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Briefly describe what data is collected and why..."
+                <div>
+                    <label style={labelStyle}>Purpose Name</label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => { setName(e.target.value); if (!isEditing && !tag) setTag(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')); }}
+                        placeholder="e.g. Analytics"
+                        style={inputStyle}
+                    />
+                </div>
+                <div>
+                    <label style={labelStyle}>Data Category Info</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Briefly describe what data is collected..."
+                        style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }}
+                    />
+                </div>
+                <div>
+                    <label style={labelStyle}>Tag ID</label>
+                    <input
+                        type="text"
+                        value={tag}
+                        onChange={(e) => setTag(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                        disabled={isEditing}
+                        placeholder="unique_tag_id"
+                        style={{ ...inputStyle, fontFamily: 'monospace', background: isEditing ? '#f9fafb' : '#fff', color: isEditing ? '#9ca3af' : '#111827' }}
+                    />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#f9fafb', borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#374151' }}>Strictly Necessary</span>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={isEssential}
+                            onChange={(e) => setIsEssential(e.target.checked)}
+                            disabled={isEditing && purpose?.isEssential}
+                            style={{ opacity: 0, width: 0, height: 0 }}
                         />
-                    </div>
-
-                    <div className="form-group ">
-                        <label className="form-label text-gray-700 font-medium flex items-center justify-between">
-                            Tag ID
-                            <span className="text-[10px] text-gray-400 font-mono tracking-wider ml-2 bg-gray-100 px-1.5 py-0.5 rounded">SYSTEM ID</span>
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                className={`form-input font-mono text-sm pl-8 bg-gray-50/50 ${isEditing ? 'text-gray-500' : ''}`}
-                                value={tag}
-                                onChange={(e) => setTag(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                                disabled={isEditing}
-                            />
-                            <span className="absolute left-3 top-2.5 text-gray-400 font-bold select-none">#</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-colors">
-                        <div className="flex-1 pr-4">
-                            <div className="font-semibold text-sm text-gray-900 group-hover:text-primary transition-colors">Strictly Necessary</div>
-                            <div className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                Essential cookies that cannot be rejected by users.
-                            </div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={isEssential}
-                                onChange={(e) => setIsEssential(e.target.checked)}
-                                disabled={isEditing && purpose?.isEssential}
-                                className="hidden"
-                            />
-                            <div className={`w-11 h-6 bg-gray-200 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${isEssential ? 'bg-primary after:translate-x-full after:border-white' : ''}`}></div>
-                        </label>
-                    </div>
+                        <span style={{ position: 'absolute', inset: 0, background: isEssential ? '#4f46e5' : '#d1d5db', borderRadius: '20px', transition: 'background 0.2s' }}></span>
+                        <span style={{ position: 'absolute', top: '2px', left: isEssential ? '18px' : '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></span>
+                    </label>
                 </div>
             </div>
-
-            <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex gap-3 backdrop-blur-sm sticky bottom-0">
-                {isEditing && (
+            <div style={{ padding: '14px 20px', background: '#f9fafb', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '10px' }}>
+                {isEditing ? (
+                    <button onClick={onCancel} style={{ flex: 1, padding: '8px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}>Cancel</button>
+                ) : (
                     <button
-                        className="btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm flex-1 font-medium"
-                        onClick={onCancel}
-                    >
-                        Cancel
-                    </button>
-                )}
-                {!isEditing && (
-                    <button
-                        className="btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm flex-1 font-medium whitespace-nowrap"
-                        onClick={() => {
-                            saveMutation.mutate(undefined, {
-                                onSuccess: () => {
-                                    setName('');
-                                    setTag('');
-                                    setDescription('');
-                                    setIsEssential(false);
-                                    queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] });
-                                }
-                            });
-                        }}
+                        onClick={() => saveMutation.mutate(undefined, { onSuccess: () => { setName(''); setTag(''); setDescription(''); setIsEssential(false); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); } })}
                         disabled={saveMutation.isPending || !name || !tag}
+                        style={{ flex: 1, padding: '8px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151', opacity: saveMutation.isPending || !name || !tag ? 0.5 : 1 }}
                     >
                         Save & Add Another
                     </button>
                 )}
                 <button
-                    className="btn btn-primary shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all flex-1 font-medium"
                     onClick={() => saveMutation.mutate()}
                     disabled={saveMutation.isPending || !name || !tag}
+                    style={{ flex: 1, padding: '8px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saveMutation.isPending || !name || !tag ? 0.5 : 1 }}
                 >
-                    {saveMutation.isPending ? 'Saving...' : (isEditing ? 'Update Purpose' : 'Save Purpose')}
+                    {saveMutation.isPending ? 'Saving...' : (isEditing ? 'Update' : 'Save')}
                 </button>
             </div>
         </div>
@@ -337,8 +234,5 @@ function PurposeForm({
 }
 
 function getTranslation(purpose: Purpose, lang: string) {
-    return (
-        purpose.translations.find((t) => t.languageCode === lang) ||
-        purpose.translations[0]
-    );
+    return purpose.translations.find((t) => t.languageCode === lang) || purpose.translations[0];
 }
