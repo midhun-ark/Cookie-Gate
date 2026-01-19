@@ -15,6 +15,11 @@ export const buildApp = async () => {
     await app.register(cors);
     await app.register(sensible);
 
+    // Health Check
+    app.get('/health', async () => {
+        return { status: 'ok' };
+    });
+
     // Register Routes
     await app.register(authRoutes, { prefix: '/auth' });
     await app.register(tenantRoutes, { prefix: '/tenants' });
