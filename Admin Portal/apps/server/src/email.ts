@@ -13,14 +13,14 @@
 
 import nodemailer from 'nodemailer';
 
-// Email configuration from environment
+// Email configuration from environment (no hardcoded fallbacks for security)
 const EMAIL_CONFIG = {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    host: process.env.EMAIL_HOST || '',
     port: parseInt(process.env.EMAIL_PORT || '587', 10),
-    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
+    secure: process.env.EMAIL_SECURE === 'true',
     user: process.env.EMAIL_USER || '',
     pass: process.env.EMAIL_PASS || '',
-    from: process.env.EMAIL_FROM || 'ComplyArk <noreply@complyark.com>',
+    from: process.env.EMAIL_FROM || '',
 };
 
 // Create transporter (lazy initialization)

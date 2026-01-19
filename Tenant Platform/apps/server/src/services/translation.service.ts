@@ -12,7 +12,12 @@ export class TranslationService {
     private readonly apiToken: string;
 
     constructor() {
-        this.apiUrl = process.env.HF_TRANSLATION_API_URL || 'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-en-';
+        // No hardcoded fallbacks - must be configured via environment
+        const apiUrl = process.env.HF_TRANSLATION_API_URL;
+        if (!apiUrl) {
+            console.warn('[TranslationService] HF_TRANSLATION_API_URL not configured - translation will fail');
+        }
+        this.apiUrl = apiUrl || '';
         this.apiToken = process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY || '';
     }
 

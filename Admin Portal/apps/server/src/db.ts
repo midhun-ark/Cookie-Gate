@@ -4,15 +4,27 @@ dotenv.config();
 import { Pool } from 'pg';
 
 /**
+ * Helper to get required environment variable.
+ * Throws if not set.
+ */
+function requireEnv(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
+/**
  * Centralized database connection pool.
- * Uses configuration matching docker-compose.yml (port 5445).
+ * All values MUST be set via environment variables.
  */
 const dbConfig = {
-    user: process.env.DB_USER || 'ark',
-    password: process.env.DB_PASSWORD || 'arkpass',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'ark_db',
-    port: parseInt(process.env.DB_PORT || '5433', 10),
+    user: requireEnv('DB_USER'),
+    password: requireEnv('DB_PASSWORD'),
+    host: requireEnv('DB_HOST'),
+    database: requireEnv('DB_NAME'),
+    port: parseInt(requireEnv('DB_PORT'), 10),
 };
 
 console.log('🔌 DB Config:', { ...dbConfig, password: '*****' });

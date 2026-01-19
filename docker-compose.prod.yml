@@ -1,0 +1,157 @@
+# ComplyArk Production Docker Compose
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  # ============================================
+  # DATABASE
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: complyark-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ark}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-arkpass}
+      POSTGRES_DB: ${DB_NAME:-ark_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-ark} -d ${DB_NAME:-ark_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - complyark-network
+
+  # ============================================
+  # MIGRATIONS (runs once before servers start)
+  # ============================================
+  admin-migrate:
+    build:
+      context: ./Admin Portal/apps/server
+      target: builder
+    container_name: complyark-admin-migrate
+    command: npm run migrate:up
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-ark}
+      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
+      DB_NAME: ${DB_NAME:-ark_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - complyark-network
+
+  tenant-migrate:
+    build:
+      context: ./Tenant Platform/apps/server
+      target: builder
+    container_name: complyark-tenant-migrate
+    command: npm run migrate:up
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-ark}
+      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
+      DB_NAME: ${DB_NAME:-ark_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  # ============================================
+  # BACKEND SERVERS
+  # ============================================
+  admin-server:
+    build:
+      context: ./Admin Portal/apps/server
+    container_name: complyark-admin-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-ark}
+      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
+      DB_NAME: ${DB_NAME:-ark_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGINS: ${ADMIN_CORS_ORIGINS:-http://localhost:8080}
+    depends_on:
+      admin-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  tenant-server:
+    build:
+      context: ./Tenant Platform/apps/server
+    container_name: complyark-tenant-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-ark}
+      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
+      DB_NAME: ${DB_NAME:-ark_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGINS: ${TENANT_CORS_ORIGINS:-http://localhost:8081}
+    depends_on:
+      tenant-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  # ============================================
+  # FRONTEND UI (served by Nginx)
+  # ============================================
+  admin-ui:
+    build:
+      context: ./Admin Portal/apps/admin-ui
+      args:
+        VITE_API_URL: ${ADMIN_API_URL:-http://localhost:3000}
+    container_name: complyark-admin-ui
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - admin-server
+    networks:
+      - complyark-network
+
+  tenant-ui:
+    build:
+      context: ./Tenant Platform/apps/tenant-ui
+      args:
+        VITE_API_URL: ${TENANT_API_URL:-http://localhost:3001}
+        VITE_LOADER_URL: ${LOADER_URL:-http://localhost:3001/public/loader.js}
+    container_name: complyark-tenant-ui
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - tenant-server
+    networks:
+      - complyark-network
+
+# ============================================
+# VOLUMES & NETWORKS
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  complyark-network:
+    driver: bridge

@@ -2,22 +2,34 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 /**
+ * Helper to get required environment variable.
+ * Throws if not set.
+ */
+function requireEnv(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
+/**
  * Configuration object for the Tenant Platform.
- * All settings are loaded from environment variables with sensible defaults.
+ * Critical settings MUST be set via environment variables (no defaults).
  */
 export const config = {
-    // Database
+    // Database - ALL REQUIRED
     db: {
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5433', 10),
-        name: process.env.DB_NAME || 'ark_db',
-        user: process.env.DB_USER || 'ark',
-        password: process.env.DB_PASSWORD || 'arkpass',
+        host: requireEnv('DB_HOST'),
+        port: parseInt(requireEnv('DB_PORT'), 10),
+        name: requireEnv('DB_NAME'),
+        user: requireEnv('DB_USER'),
+        password: requireEnv('DB_PASSWORD'),
     },
 
-    // JWT Authentication
+    // JWT Authentication - SECRET REQUIRED
     jwt: {
-        secret: process.env.JWT_SECRET || 'tenant-platform-jwt-secret-change-in-production',
+        secret: requireEnv('JWT_SECRET'),
         expiresIn: process.env.JWT_EXPIRES_IN || '1h',
         refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     },
@@ -28,28 +40,25 @@ export const config = {
         nodeEnv: process.env.NODE_ENV || 'development',
     },
 
-    // CORS
+    // CORS - REQUIRED for production
     cors: {
-        origins: (process.env.CORS_ORIGINS || 'http://localhost:5174,http://localhost:5173').split(','),
+        origins: requireEnv('CORS_ORIGINS').split(','),
     },
 
-    // Cookie/Session
+    // Cookie/Session - SECRET REQUIRED
     session: {
-        secret: process.env.SESSION_SECRET || 'tenant-session-secret-change-in-production',
+        secret: requireEnv('SESSION_SECRET'),
         secure: process.env.COOKIE_SECURE === 'true',
         sameSite: (process.env.COOKIE_SAME_SITE || 'lax') as 'lax' | 'strict' | 'none',
     },
 
-    // Compliance Settings
+    // Compliance Settings (hardcoded is OK - these are app defaults)
     compliance: {
-        // Default supported languages
         defaultLanguage: 'en',
-        requiredLanguages: ['en'], // English is always required
-
-        // Dark pattern prevention settings
+        requiredLanguages: ['en'],
         darkPatternPrevention: {
             requireEqualButtonProminence: true,
-            maxButtonSizeDifference: 0, // 0 = must be identical
+            maxButtonSizeDifference: 0,
             preventPreCheckedNonEssential: true,
         },
     },
