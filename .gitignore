@@ -17,6 +17,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.aws
 *.log
 
 # Logs
@@ -32,3 +33,6 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Security
+*.pem

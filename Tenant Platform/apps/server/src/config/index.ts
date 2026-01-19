@@ -25,6 +25,7 @@ export const config = {
         name: requireEnv('DB_NAME'),
         user: requireEnv('DB_USER'),
         password: requireEnv('DB_PASSWORD'),
+        ssl: process.env.DB_SSL === 'true',
     },
 
     // JWT Authentication - SECRET REQUIRED

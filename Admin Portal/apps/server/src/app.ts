@@ -12,7 +12,12 @@ export const buildApp = async () => {
         logger: true
     });
 
-    await app.register(cors);
+    await app.register(cors, {
+        origin: true, // Allow all origins
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-id']
+    });
     await app.register(sensible);
 
     // Health Check

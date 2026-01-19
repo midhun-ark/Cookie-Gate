@@ -74,7 +74,7 @@ export interface TenantAdminInvitePayload {
 export async function sendTenantAdminInvite(payload: TenantAdminInvitePayload): Promise<boolean> {
     const { tenantName, tenantAdminEmail, temporaryPassword, platformUrl } = payload;
 
-    const effectivePlatformUrl = platformUrl || 'https://tenant.complyark.com (Coming Soon)';
+    const effectivePlatformUrl = platformUrl || 'http://3.110.90.28:8081/login';
 
     const subject = `ComplyArk: Tenant Admin Access for ${tenantName}`;
 

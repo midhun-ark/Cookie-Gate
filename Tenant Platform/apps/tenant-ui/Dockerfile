@@ -3,6 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build arguments for API URLs
+ARG VITE_API_URL=http://localhost:3001
+ARG VITE_LOADER_URL=http://localhost:3001/public/loader.js
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_LOADER_URL=$VITE_LOADER_URL
+
 # Copy package files
 COPY package*.json ./
 

@@ -90,9 +90,20 @@ This guide outlines the steps to deploy the Cookie Gate application (Admin Porta
         *   `LOADER_URL`: `http://<EC2-PUBLIC-IP>:3001/public/loader.js`
 
 3.  **Start the Application**:
-    ```bash
-    docker compose -f docker-compose.prod.yml up -d --build
-    ```
+    *   **Recommended**: Build sequentially to avoid running out of memory on the instance:
+        ```bash
+        sudo docker-compose -f docker-compose.aws.yml build admin-server
+        sudo docker-compose -f docker-compose.aws.yml build tenant-server
+        sudo docker-compose -f docker-compose.aws.yml build admin-ui
+        sudo docker-compose -f docker-compose.aws.yml build tenant-ui
+        sudo docker-compose -f docker-compose.aws.yml build admin-migrate
+        sudo docker-compose -f docker-compose.aws.yml build tenant-migrate
+        sudo docker-compose -f docker-compose.aws.yml up -d
+        ```
+    *   *Alternative (if you have lots of RAM)*:
+        ```bash
+        sudo docker-compose -f docker-compose.aws.yml up -d --build
+        ```
 
 4.  **Verify**:
     *   Run `docker compose -f docker-compose.prod.yml ps` to see if all containers are healthy.
@@ -145,6 +156,28 @@ Running directly on ports 8080/8081 is not ideal for production. Use a reverse p
     sudo systemctl restart caddy
     ```
     Caddy will automatically fetch and renew HTTPS certificates for you.
+
+---
+
+
+## How to Resize your Instance (If builds freeze)
+
+If your server freezes during `docker-compose build` (SSH stops working), your instance ran out of RAM. You need to upgrade from `t3.micro` (1GB) to `t3.small` (2GB) or `t3.medium` (4GB).
+
+1.  **Stop the Instance**:
+    *   Go to AWS Console > EC2 > Instances.
+    *   Select your instance.
+    *   Click **Instance state** > **Stop instance**.
+    *   Wait until State is "Stopped".
+
+2.  **Change Instance Type**:
+    *   With instance selected, click **Actions** > **Instance settings** > **Change instance type**.
+    *   Select **t3.small** (approx $15/mo) or **t3.medium** (approx $30/mo).
+    *   Click **Apply**.
+
+3.  **Start the Instance**:
+    *   Click **Instance state** > **Start instance**.
+    *   Wait for 2 status checks to pass (or just wait 1 min and try SSH).
 
 ---
 

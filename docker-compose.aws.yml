@@ -1,0 +1,129 @@
+# ComplyArk AWS Deployment Docker Compose
+# Uses external RDS PostgreSQL database
+# Usage: docker-compose -f docker-compose.aws.yml up -d --build
+
+services:
+  # ============================================
+  # MIGRATIONS (runs once before servers start)
+  # ============================================
+  admin-migrate:
+    build:
+      context: ./Admin Portal/apps/server
+      target: builder
+    container_name: complyark-admin-migrate
+    command: npm run migrate:up
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+    networks:
+      - complyark-network
+
+  tenant-migrate:
+    build:
+      context: ./Tenant Platform/apps/server
+      target: builder
+    container_name: complyark-tenant-migrate
+    command: npm run migrate:up
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+    depends_on:
+      admin-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  # ============================================
+  # BACKEND SERVERS
+  # ============================================
+  admin-server:
+    build:
+      context: ./Admin Portal/apps/server
+    container_name: complyark-admin-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${ADMIN_CORS_ORIGINS:-http://localhost:8080}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_SECURE: ${EMAIL_SECURE}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+    depends_on:
+      admin-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  tenant-server:
+    build:
+      context: ./Tenant Platform/apps/server
+    container_name: complyark-tenant-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      CORS_ORIGINS: ${TENANT_CORS_ORIGINS:-http://localhost:8081}
+    depends_on:
+      tenant-migrate:
+        condition: service_completed_successfully
+    networks:
+      - complyark-network
+
+  # ============================================
+  # FRONTEND UI (served by Nginx)
+  # ============================================
+  admin-ui:
+    build:
+      context: ./Admin Portal/apps/admin-ui
+      args:
+        VITE_API_URL: ${ADMIN_API_URL}
+    container_name: complyark-admin-ui
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - admin-server
+    networks:
+      - complyark-network
+
+  tenant-ui:
+    build:
+      context: ./Tenant Platform/apps/tenant-ui
+      args:
+        VITE_API_URL: ${TENANT_API_URL}
+        VITE_LOADER_URL: ${LOADER_URL}
+    container_name: complyark-tenant-ui
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - tenant-server
+    networks:
+      - complyark-network
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  complyark-network:
+    driver: bridge

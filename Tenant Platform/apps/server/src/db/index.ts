@@ -11,6 +11,7 @@ export const pool = new Pool({
     database: config.db.name,
     user: config.db.user,
     password: config.db.password,
+    ssl: config.db.ssl ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum pool size
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,

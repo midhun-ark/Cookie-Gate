@@ -25,6 +25,8 @@ const dbConfig = {
     host: requireEnv('DB_HOST'),
     database: requireEnv('DB_NAME'),
     port: parseInt(requireEnv('DB_PORT'), 10),
+    // Enable SSL for RDS connections
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 };
 
 console.log('🔌 DB Config:', { ...dbConfig, password: '*****' });
