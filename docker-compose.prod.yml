@@ -33,11 +33,7 @@ services:
     container_name: complyark-admin-migrate
     command: npm run migrate:up
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER:-ark}
-      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
-      DB_NAME: ${DB_NAME:-ark_db}
+      DATABASE_URL: postgres://${DB_USER:-ark}:${DB_PASSWORD:-arkpass}@postgres:5432/${DB_NAME:-ark_db}
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,11 +47,7 @@ services:
     container_name: complyark-tenant-migrate
     command: npm run migrate:up
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER:-ark}
-      DB_PASSWORD: ${DB_PASSWORD:-arkpass}
-      DB_NAME: ${DB_NAME:-ark_db}
+      DATABASE_URL: postgres://${DB_USER:-ark}:${DB_PASSWORD:-arkpass}@postgres:5432/${DB_NAME:-ark_db}
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,6 +98,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-arkpass}
       DB_NAME: ${DB_NAME:-ark_db}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       CORS_ORIGINS: ${TENANT_CORS_ORIGINS:-http://localhost:8081}
     depends_on:
       tenant-migrate:

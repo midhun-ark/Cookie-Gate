@@ -1,4 +1,7 @@
 {
+    "defaultEnv": {
+        "ENV": "DATABASE_URL"
+    },
     "development": {
         "driver": "pg",
         "user": "ark",

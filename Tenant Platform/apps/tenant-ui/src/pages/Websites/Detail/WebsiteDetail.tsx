@@ -234,20 +234,3 @@ export function WebsiteDetailPage() {
         </div>
     );
 }
-
-function StatusBadge({ status }: { status: string }) {
-    const config = {
-        ACTIVE: { className: 'badge-success', icon: CheckCircle, label: 'Active' },
-        DRAFT: { className: 'badge-warning', icon: AlertTriangle, label: 'Draft' },
-        DISABLED: { className: 'badge-gray', icon: AlertTriangle, label: 'Disabled' },
-    }[status] || { className: 'badge-gray', icon: AlertTriangle, label: status };
-
-    const Icon = config.icon;
-
-    return (
-        <span className={`badge ${config.className} flex items-center gap-1.5`}>
-            <Icon size={12} />
-            {config.label}
-        </span>
-    );
-}

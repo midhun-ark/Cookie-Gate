@@ -171,7 +171,8 @@ function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: s
     const [selectedLang, setSelectedLang] = useState('en');
     const [translations, setTranslations] = useState<Translation[]>([]);
 
-    const { data: languages = [] } = useQuery({
+    // Languages fetched but handled via translations
+    useQuery({
         queryKey: ['languages'],
         queryFn: languageApi.list
     });
@@ -213,12 +214,7 @@ function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: s
         }
     };
 
-    const addLanguage = (code: string) => {
-        if (!translations.find(t => t.languageCode === code)) {
-            setTranslations(prev => [...prev, { languageCode: code, name: '', description: '' }]);
-        }
-        setSelectedLang(code);
-    };
+
 
     const saveMutation = useMutation({
         mutationFn: async () => {

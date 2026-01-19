@@ -1,4 +1,4 @@
-import { Copy, Terminal, CheckCircle, ExternalLink, Code, AlertTriangle, Shield } from 'lucide-react';
+import { Copy, Terminal, CheckCircle, ExternalLink, AlertTriangle, Shield } from 'lucide-react';
 import type { Website } from '@/types';
 import { useState } from 'react';
 

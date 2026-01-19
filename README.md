@@ -18,6 +18,10 @@ Cookie-Gate/
 └── .env.example
 ```
 
+# run everything one step 
+docker-compose -f docker-compose.prod.yml up -d
+
+
 ---
 
 ## 🚀 Quick Start (Development)
