@@ -5,7 +5,7 @@ import { noticeApi } from '@/api';
 import { useLanguages } from '@/hooks';
 import { getErrorMessage } from '@/api/client';
 
-export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
+export function NoticeTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [selectedLang, setSelectedLang] = useState('en');
     const [dpoEmail, setDpoEmail] = useState('');
@@ -17,8 +17,8 @@ export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: (
     const isEmailValid = !dpoEmail || dpoEmail.trim() === '' || emailRegex.test(dpoEmail);
 
     const { data: notice, isLoading: isLoadingNotice } = useQuery({
-        queryKey: ['notice', websiteId],
-        queryFn: () => noticeApi.get(websiteId),
+        queryKey: ['notice', versionId],
+        queryFn: () => noticeApi.get(versionId),
     });
 
     const { languages } = useLanguages();
@@ -80,11 +80,11 @@ export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: (
             if (notice) {
                 await noticeApi.updateTranslations(notice.id, translations, dpoEmail);
             } else {
-                await noticeApi.create(websiteId, { dpoEmail, translations });
+                await noticeApi.create(versionId, { dpoEmail, translations });
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
+            queryClient.invalidateQueries({ queryKey: ['notice', versionId] });
             setSaveSuccess(true);
             onSave?.();
             setTimeout(() => setSaveSuccess(false), 3000);
@@ -115,7 +115,7 @@ export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: (
 
     // Validation for mandatory fields
     const enData = formData['en'] || defaultForm;
-    const isFormValid = isEmailValid && dpoEmail.trim() !== '' && enData.policyUrl.trim() !== '' && enData.rightsDescription.trim() !== '' && enData.withdrawalInstruction.trim() !== '' && enData.complaintInstruction.trim() !== '';
+    const isFormValid = isEmailValid && enData.policyUrl.trim() !== '' && enData.rightsDescription.trim() !== '' && enData.withdrawalInstruction.trim() !== '' && enData.complaintInstruction.trim() !== '';
 
     return (
         <div style={{ paddingBottom: '40px' }}>
@@ -158,7 +158,7 @@ export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: (
                         </div>
                         <div style={{ padding: '16px' }}>
                             <div style={{ marginBottom: '0' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>DPO/Grievance Officer Email <span style={{ color: '#ef4444' }}>*</span></label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>DPO/Grievance Officer Email</label>
                                 <input
                                     type="email"
                                     value={dpoEmail}

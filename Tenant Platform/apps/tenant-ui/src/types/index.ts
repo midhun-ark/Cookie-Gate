@@ -50,6 +50,19 @@ export interface CanActivateResult {
     reasons: string[];
 }
 
+// Website Version
+export type VersionStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export interface WebsiteVersion {
+    id: string;
+    websiteId: string;
+    versionNumber: number;
+    versionName: string;
+    status: VersionStatus;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // Notice
 export interface NoticeTranslation {
     id: string;
@@ -70,7 +83,7 @@ export interface NoticeTranslation {
 
 export interface WebsiteNotice {
     id: string;
-    websiteId: string;
+    versionId: string;
     dpoEmail?: string;
     createdAt: string;
     updatedAt: string;
@@ -92,7 +105,7 @@ export interface PurposeTranslation {
 
 export interface Purpose {
     id: string;
-    websiteId: string;
+    versionId: string;
     isEssential: boolean;
     tag: string;
     status: PurposeStatus;

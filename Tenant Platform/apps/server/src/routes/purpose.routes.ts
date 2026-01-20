@@ -4,7 +4,6 @@ import {
     createPurposeSchema,
     updatePurposeSchema,
     updatePurposeTranslationSchema,
-    websiteIdParamSchema,
     purposeIdParamSchema
 } from '../validators';
 import {
@@ -15,8 +14,14 @@ import {
 } from '../middleware';
 import { z } from 'zod';
 
+// Version ID param schema
+const versionIdParamSchema = z.object({
+    versionId: z.string().uuid('Invalid version ID'),
+});
+
 /**
  * Purpose Routes
+ * Note: Purposes now belong to website versions, not websites directly.
  */
 export async function purposeRoutes(app: FastifyInstance): Promise<void> {
     // All routes require authentication
@@ -24,16 +29,16 @@ export async function purposeRoutes(app: FastifyInstance): Promise<void> {
     app.addHook('preHandler', requirePasswordReset);
 
     /**
-     * GET /tenant/websites/:id/purposes
-     * Get all purposes for a website
+     * GET /tenant/versions/:versionId/purposes
+     * Get all purposes for a version
      */
-    app.get<{ Params: { id: string } }>(
-        '/websites/:id/purposes',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.get<{ Params: { versionId: string } }>(
+        '/versions/:versionId/purposes',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { tenantId } = getCurrentUser(request);
 
-            const purposes = await purposeService.getByWebsiteId(websiteId, tenantId);
+            const purposes = await purposeService.getByVersionId(versionId, tenantId);
 
             return {
                 success: true,
@@ -43,19 +48,19 @@ export async function purposeRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/purposes
-     * Create a purpose for a website
+     * POST /tenant/versions/:versionId/purposes
+     * Create a purpose for a version
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/purposes',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/purposes',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const input = createPurposeSchema.parse(request.body);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
             const purpose = await purposeService.create(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 input,
@@ -166,13 +171,13 @@ export async function purposeRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/purposes/reorder
-     * Reorder purposes
+     * POST /tenant/versions/:versionId/purposes/reorder
+     * Reorder purposes within a version
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/purposes/reorder',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/purposes/reorder',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const input = z.object({
                 orders: z.array(z.object({
                     id: z.string().uuid(),
@@ -183,7 +188,7 @@ export async function purposeRoutes(app: FastifyInstance): Promise<void> {
             const requestInfo = getRequestInfo(request);
 
             await purposeService.reorder(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 input.orders,

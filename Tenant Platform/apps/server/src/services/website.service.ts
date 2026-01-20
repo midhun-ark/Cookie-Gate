@@ -1,6 +1,7 @@
-import { websiteRepository, auditRepository } from '../repositories';
+import { websiteRepository, auditRepository, versionRepository } from '../repositories';
 import { Website, WebsiteWithStats, WebsiteStatus } from '../types';
 import { CreateWebsiteInput, UpdateWebsiteStatusInput } from '../validators';
+import { withTransaction } from '../db';
 
 /**
  * Website Service.
@@ -9,6 +10,7 @@ import { CreateWebsiteInput, UpdateWebsiteStatusInput } from '../validators';
 export const websiteService = {
     /**
      * Create a new website for a tenant
+     * Automatically creates Version 1 with an Essential purpose
      */
     async create(
         tenantId: string,
@@ -22,24 +24,29 @@ export const websiteService = {
             throw new Error(`Domain "${input.domain}" is already registered`);
         }
 
-        // Create website
-        const website = await websiteRepository.create(tenantId, input.domain);
+        return withTransaction(async (client) => {
+            // Create website
+            const website = await websiteRepository.create(tenantId, input.domain);
 
-        // Audit log
-        await auditRepository.create(
-            tenantId,
-            actorId,
-            'WEBSITE_CREATED',
-            {
-                resourceType: 'website',
-                resourceId: website.id,
-                metadata: { domain: website.domain },
-                ipAddress: requestInfo.ipAddress,
-                userAgent: requestInfo.userAgent,
-            }
-        );
+            // Auto-create Version 1 with Essential purpose
+            await versionRepository.createInitialVersion(website.id, client);
 
-        return website;
+            // Audit log
+            await auditRepository.create(
+                tenantId,
+                actorId,
+                'WEBSITE_CREATED',
+                {
+                    resourceType: 'website',
+                    resourceId: website.id,
+                    metadata: { domain: website.domain, initialVersionCreated: true },
+                    ipAddress: requestInfo.ipAddress,
+                    userAgent: requestInfo.userAgent,
+                }
+            );
+
+            return website;
+        });
     },
 
     /**

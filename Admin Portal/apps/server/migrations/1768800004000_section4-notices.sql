@@ -1,17 +1,19 @@
 -- ============================================================================
 -- SECTION 4: WEBSITE NOTICES TABLE (with DPDPA fields)
 -- ============================================================================
+-- NOTE: Notices now belong to website_versions, not directly to websites.
+-- This enables versioning of consent configurations.
 
 -- 4.1 Base Notice Table
 CREATE TABLE IF NOT EXISTS website_notices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    website_id UUID NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
+    website_version_id UUID NOT NULL REFERENCES website_versions(id) ON DELETE CASCADE,
     dpo_email TEXT, -- DPO/Grievance Officer email (DPDPA requirement)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- Only one notice per website
-    CONSTRAINT unique_website_notice UNIQUE (website_id)
+    -- Only one notice per version
+    CONSTRAINT unique_version_notice UNIQUE (website_version_id)
 );
 
 -- 4.2 Notice Translations Table (with DPDPA specific fields)

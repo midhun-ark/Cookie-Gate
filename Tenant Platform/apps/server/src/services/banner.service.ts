@@ -1,27 +1,28 @@
-import { bannerRepository, websiteRepository, auditRepository } from '../repositories';
+import { bannerRepository, versionRepository, auditRepository } from '../repositories';
 import { BannerCustomization } from '../types';
 import { BannerCustomizationInput, UpdateBannerCustomizationInput } from '../validators';
 
 /**
  * Banner Customization Service.
  * Handles guarded banner customization with dark pattern prevention.
+ * Note: Banners now belong to website versions, not websites directly.
  */
 export const bannerService = {
     /**
-     * Get banner customization for a website
+     * Get banner customization for a version
      * Returns defaults if not customized
      */
-    async getByWebsiteId(
-        websiteId: string,
+    async getByVersionId(
+        versionId: string,
         tenantId: string
     ): Promise<BannerCustomization | null> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
-        const banner = await bannerRepository.findByWebsiteId(websiteId);
+        const banner = await bannerRepository.findByVersionId(versionId);
         return banner;
     },
 
@@ -29,10 +30,10 @@ export const bannerService = {
      * Get banner with defaults merged
      */
     async getWithDefaults(
-        websiteId: string,
+        versionId: string,
         tenantId: string
     ): Promise<BannerCustomizationInput> {
-        const banner = await this.getByWebsiteId(websiteId, tenantId);
+        const banner = await this.getByVersionId(versionId, tenantId);
         const defaults = bannerRepository.getDefaults();
 
         if (!banner) {
@@ -62,27 +63,27 @@ export const bannerService = {
      * Create or update banner customization
      */
     async upsert(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         input: BannerCustomizationInput,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<BannerCustomization> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         // Additional dark pattern prevention checks (beyond Zod validation)
         this.validateDarkPatternPrevention(input);
 
         // Get existing banner to determine if create or update
-        const existing = await bannerRepository.findByWebsiteId(websiteId);
+        const existing = await bannerRepository.findByVersionId(versionId);
         const isCreate = !existing;
 
         // Upsert banner
-        const banner = await bannerRepository.upsert(websiteId, input);
+        const banner = await bannerRepository.upsert(versionId, input);
 
         // Audit log
         await auditRepository.create(
@@ -93,7 +94,7 @@ export const bannerService = {
                 resourceType: 'banner',
                 resourceId: banner.id,
                 metadata: {
-                    websiteId,
+                    versionId,
                     changes: input,
                 },
                 ipAddress: requestInfo.ipAddress,
@@ -108,20 +109,20 @@ export const bannerService = {
      * Partial update banner customization
      */
     async update(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         input: UpdateBannerCustomizationInput,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<BannerCustomization> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         // Get current banner to merge for validation
-        const current = await bannerRepository.findByWebsiteId(websiteId);
+        const current = await bannerRepository.findByVersionId(versionId);
         if (!current) {
             throw new Error('Banner not found. Create a banner first.');
         }
@@ -148,7 +149,7 @@ export const bannerService = {
         this.validateDarkPatternPrevention(merged);
 
         // Update banner
-        const banner = await bannerRepository.update(websiteId, input);
+        const banner = await bannerRepository.update(versionId, input);
         if (!banner) {
             throw new Error('Failed to update banner');
         }
@@ -162,7 +163,7 @@ export const bannerService = {
                 resourceType: 'banner',
                 resourceId: banner.id,
                 metadata: {
-                    websiteId,
+                    versionId,
                     changes: input,
                 },
                 ipAddress: requestInfo.ipAddress,
@@ -177,13 +178,13 @@ export const bannerService = {
      * Reset banner to defaults
      */
     async resetToDefaults(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<BannerCustomization> {
         const defaults = bannerRepository.getDefaults();
-        return this.upsert(websiteId, tenantId, actorId, defaults, requestInfo);
+        return this.upsert(versionId, tenantId, actorId, defaults, requestInfo);
     },
 
     /**
@@ -250,10 +251,10 @@ export const bannerService = {
      * Get preview HTML for banner
      */
     async getPreviewHtml(
-        websiteId: string,
+        versionId: string,
         tenantId: string
     ): Promise<string> {
-        const banner = await this.getWithDefaults(websiteId, tenantId);
+        const banner = await this.getWithDefaults(versionId, tenantId);
 
         return `
 <!DOCTYPE html>
@@ -324,10 +325,10 @@ export const bannerService = {
     // ==================== TRANSLATION METHODS ====================
 
     /**
-     * Get all banner translations for a website
+     * Get all banner translations for a version
      */
     async getTranslations(
-        websiteId: string,
+        versionId: string,
         tenantId: string
     ): Promise<Array<{
         languageCode: string;
@@ -337,13 +338,13 @@ export const bannerService = {
         rejectButtonText: string;
         preferencesButtonText: string;
     }>> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
-        const translations = await bannerRepository.getTranslations(websiteId);
+        const translations = await bannerRepository.getTranslations(versionId);
 
         // If no translations exist, return default English
         if (translations.length === 0) {
@@ -368,7 +369,7 @@ export const bannerService = {
      * Create or update banner translations
      */
     async upsertTranslations(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         translations: Array<{
@@ -388,16 +389,16 @@ export const bannerService = {
         rejectButtonText: string;
         preferencesButtonText: string;
     }>> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         const results = [];
 
         for (const t of translations) {
-            const saved = await bannerRepository.upsertTranslation(websiteId, t.languageCode, {
+            const saved = await bannerRepository.upsertTranslation(versionId, t.languageCode, {
                 headlineText: t.headlineText,
                 descriptionText: t.descriptionText,
                 acceptButtonText: t.acceptButtonText,
@@ -421,9 +422,9 @@ export const bannerService = {
             'BANNER_TRANSLATIONS_UPDATED',
             {
                 resourceType: 'banner',
-                resourceId: websiteId,
+                resourceId: versionId,
                 metadata: {
-                    websiteId,
+                    versionId,
                     languages: translations.map(t => t.languageCode),
                 },
                 ipAddress: requestInfo.ipAddress,

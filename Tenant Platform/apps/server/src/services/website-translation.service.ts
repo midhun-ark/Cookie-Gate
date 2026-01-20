@@ -2,7 +2,7 @@ import { translationService } from './translation.service';
 import { noticeService } from './notice.service';
 import { purposeService } from './purpose.service';
 import { bannerService } from './banner.service';
-import { auditRepository } from '../repositories';
+import { auditRepository, versionRepository } from '../repositories';
 
 export interface TranslationResult {
     notice: { translated: boolean; languages: string[] };
@@ -13,6 +13,7 @@ export interface TranslationResult {
 export class WebsiteTranslationService {
     /**
      * Translate all content for a website to specified languages
+     * This method finds the active version and translates its content
      */
     async translateAll(
         websiteId: string,
@@ -33,11 +34,19 @@ export class WebsiteTranslationService {
             return result;
         }
 
+        // Get the active version for this website
+        const activeVersion = await versionRepository.findActiveByWebsiteId(websiteId);
+        if (!activeVersion) {
+            console.error('No active version found for website:', websiteId);
+            return result;
+        }
+        const versionId = activeVersion.id;
+
         // 1. Translate Notice
         try {
-            const notice = await noticeService.getByWebsiteId(websiteId, tenantId);
+            const notice = await noticeService.getByVersionId(versionId, tenantId);
             if (notice) {
-                const enTranslation = notice.translations.find(t => t.languageCode === 'en');
+                const enTranslation = notice.translations.find((t: { languageCode: string }) => t.languageCode === 'en');
                 if (enTranslation) {
                     for (const targetLang of langsToTranslate) {
                         try {
@@ -73,9 +82,9 @@ export class WebsiteTranslationService {
 
         // 2. Translate Purposes
         try {
-            const purposes = await purposeService.getByWebsiteId(websiteId, tenantId);
+            const purposes = await purposeService.getByVersionId(versionId, tenantId);
             for (const purpose of purposes) {
-                const enTranslation = purpose.translations?.find(t => t.languageCode === 'en');
+                const enTranslation = purpose.translations?.find((t: { languageCode: string }) => t.languageCode === 'en');
                 if (enTranslation) {
                     const newTranslations: Array<{ languageCode: string; name: string; description: string }> = [];
                     for (const targetLang of langsToTranslate) {
@@ -94,8 +103,8 @@ export class WebsiteTranslationService {
                     if (newTranslations.length > 0) {
                         // Merge with existing translations - only keep en and non-target languages
                         const existingTrans = (purpose.translations || [])
-                            .filter(t => t.languageCode === 'en' || !langsToTranslate.includes(t.languageCode))
-                            .map(t => ({ languageCode: t.languageCode, name: t.name, description: t.description }));
+                            .filter((t: { languageCode: string }) => t.languageCode === 'en' || !langsToTranslate.includes(t.languageCode))
+                            .map((t: { languageCode: string; name: string; description: string }) => ({ languageCode: t.languageCode, name: t.name, description: t.description }));
                         const mergedTranslations = [...existingTrans, ...newTranslations];
                         await purposeService.updateTranslations(purpose.id, tenantId, userId, mergedTranslations, requestInfo);
                         result.purposes.translated++;
@@ -109,7 +118,7 @@ export class WebsiteTranslationService {
 
         // 3. Translate Banner
         try {
-            const bannerTranslations = await bannerService.getTranslations(websiteId, tenantId);
+            const bannerTranslations = await bannerService.getTranslations(versionId, tenantId);
             const enBanner = bannerTranslations.find(t => t.languageCode === 'en');
             if (enBanner) {
                 const newBannerTranslations: Array<{
@@ -149,7 +158,7 @@ export class WebsiteTranslationService {
                         ...bannerTranslations.filter(t => t.languageCode === 'en' || !langsToTranslate.includes(t.languageCode)),
                         ...newBannerTranslations
                     ];
-                    await bannerService.upsertTranslations(websiteId, tenantId, userId, mergedBanner, requestInfo);
+                    await bannerService.upsertTranslations(versionId, tenantId, userId, mergedBanner, requestInfo);
                     result.banner.translated = true;
                 }
             }
@@ -166,6 +175,7 @@ export class WebsiteTranslationService {
                 resourceType: 'website',
                 resourceId: websiteId,
                 metadata: {
+                    versionId,
                     targetLanguages: langsToTranslate,
                     result
                 },

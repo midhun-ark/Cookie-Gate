@@ -1,5 +1,6 @@
 export * from './auth.service';
 export * from './website.service';
+export * from './version.service';
 export * from './notice.service';
 export * from './purpose.service';
 export * from './banner.service';

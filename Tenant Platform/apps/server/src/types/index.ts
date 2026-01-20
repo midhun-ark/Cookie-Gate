@@ -49,13 +49,36 @@ export interface WebsiteWithStats extends Website {
     purposeCount: number;
     hasEnglishNotice: boolean;
     hasBanner: boolean;
+    activeVersionId?: string;
+    activeVersionNumber?: number;
+}
+
+// ==================== Website Version Types ====================
+
+export type VersionStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export interface WebsiteVersion {
+    id: string;
+    websiteId: string;
+    versionNumber: number;
+    versionName: string | null;
+    status: VersionStatus;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface WebsiteVersionWithStats extends WebsiteVersion {
+    hasNotice: boolean;
+    purposeCount: number;
+    hasEnglishNotice: boolean;
+    hasBanner: boolean;
 }
 
 // ==================== Notice Types ====================
 
 export interface WebsiteNotice {
     id: string;
-    websiteId: string;
+    versionId: string;
     dpoEmail?: string;
     createdAt: Date;
     updatedAt: Date;
@@ -88,7 +111,7 @@ export type PurposeStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Purpose {
     id: string;
-    websiteId: string;
+    versionId: string;
     isEssential: boolean;
     tag: string;
     status: PurposeStatus;
@@ -118,7 +141,7 @@ export type BannerLayout = 'banner' | 'modal' | 'popup';
 
 export interface BannerCustomization {
     id: string;
-    websiteId: string;
+    versionId: string;
     primaryColor: string;
     secondaryColor: string;
     backgroundColor: string;
@@ -139,7 +162,7 @@ export interface BannerCustomization {
 
 export interface BannerTranslation {
     id: string;
-    websiteId: string;
+    versionId: string;
     languageCode: string;
     headlineText: string;
     descriptionText: string;

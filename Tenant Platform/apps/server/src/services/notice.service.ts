@@ -1,37 +1,38 @@
-import { noticeRepository, websiteRepository, auditRepository } from '../repositories';
+import { noticeRepository, versionRepository, auditRepository } from '../repositories';
 import { WebsiteNoticeWithTranslations, NoticeTranslation } from '../types';
 import { CreateNoticeInput, NoticeTranslationInput } from '../validators';
 
 /**
  * Notice Service.
  * Handles consent notice configuration with multi-language support.
+ * Note: Notices now belong to website versions, not websites directly.
  */
 export const noticeService = {
     /**
-     * Create a notice for a website
+     * Create a notice for a version
      */
     async create(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         input: CreateNoticeInput,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<WebsiteNoticeWithTranslations> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         // Check if notice already exists
-        const existingNotice = await noticeRepository.existsForWebsite(websiteId);
+        const existingNotice = await noticeRepository.existsForVersion(versionId);
         if (existingNotice) {
-            throw new Error('Notice already exists for this website. Use update instead.');
+            throw new Error('Notice already exists for this version. Use update instead.');
         }
 
         // Create notice with translations
         const notice = await noticeRepository.createWithTranslations(
-            websiteId,
+            versionId,
             input.translations,
             input.dpoEmail
         );
@@ -45,7 +46,7 @@ export const noticeService = {
                 resourceType: 'notice',
                 resourceId: notice.id,
                 metadata: {
-                    websiteId,
+                    versionId,
                     languages: input.translations.map((t) => t.languageCode),
                 },
                 ipAddress: requestInfo.ipAddress,
@@ -57,19 +58,19 @@ export const noticeService = {
     },
 
     /**
-     * Get notice for a website
+     * Get notice for a version
      */
-    async getByWebsiteId(
-        websiteId: string,
+    async getByVersionId(
+        versionId: string,
         tenantId: string
     ): Promise<WebsiteNoticeWithTranslations | null> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
-        return noticeRepository.findByWebsiteId(websiteId);
+        return noticeRepository.findByVersionId(versionId);
     },
 
     /**
@@ -88,8 +89,8 @@ export const noticeService = {
             throw new Error('Notice not found');
         }
 
-        const website = await websiteRepository.findByIdAndTenant(notice.websiteId, tenantId);
-        if (!website) {
+        const version = await versionRepository.findByIdAndTenant(notice.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to notice');
         }
 
@@ -124,7 +125,7 @@ export const noticeService = {
         tenantId: string,
         actorId: string,
         translations: NoticeTranslationInput[],
-        dpoEmail: string | undefined, // Added dpoEmail
+        dpoEmail: string | undefined,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<NoticeTranslation[]> {
         // Find notice and verify ownership
@@ -133,8 +134,8 @@ export const noticeService = {
             throw new Error('Notice not found');
         }
 
-        const website = await websiteRepository.findByIdAndTenant(notice.websiteId, tenantId);
-        if (!website) {
+        const version = await versionRepository.findByIdAndTenant(notice.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to notice');
         }
 
@@ -148,9 +149,7 @@ export const noticeService = {
         const hasEnglishInInput = translations.some((t) => t.languageCode === 'en');
 
         if (!hasEnglish && !hasEnglishInInput) {
-            // throw new Error('English translation is mandatory');
-            // Allow update without english if it already exists, but schema check catches it mostly.
-            // If English exists in DB, we are good.
+            // Allow update without english if it already exists
         }
 
         // Upsert all translations
@@ -199,8 +198,8 @@ export const noticeService = {
             throw new Error('Notice not found');
         }
 
-        const website = await websiteRepository.findByIdAndTenant(notice.websiteId, tenantId);
-        if (!website) {
+        const version = await versionRepository.findByIdAndTenant(notice.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to notice');
         }
 
@@ -239,8 +238,8 @@ export const noticeService = {
             throw new Error('Notice not found');
         }
 
-        const website = await websiteRepository.findByIdAndTenant(notice.websiteId, tenantId);
-        if (!website) {
+        const version = await versionRepository.findByIdAndTenant(notice.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to notice');
         }
 

@@ -1,11 +1,13 @@
 -- ============================================================================
 -- SECTION 5: PURPOSES TABLE (with tag support)
 -- ============================================================================
+-- NOTE: Purposes now belong to website_versions, not directly to websites.
+-- This enables versioning of consent configurations.
 
 -- 5.1 Base Purposes Table
 CREATE TABLE IF NOT EXISTS purposes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    website_id UUID NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
+    website_version_id UUID NOT NULL REFERENCES website_versions(id) ON DELETE CASCADE,
     tag VARCHAR(50) NOT NULL, -- Unique identifier tag (e.g., 'analytics', 'marketing')
     is_essential BOOLEAN NOT NULL DEFAULT FALSE, -- Essential purposes cannot be declined
     status VARCHAR(20) NOT NULL CHECK (status IN ('ACTIVE', 'INACTIVE')) DEFAULT 'ACTIVE',
@@ -17,9 +19,9 @@ CREATE TABLE IF NOT EXISTS purposes (
     CONSTRAINT check_tag_format CHECK (tag ~ '^[a-z0-9_]+$')
 );
 
-CREATE INDEX IF NOT EXISTS idx_purposes_website_id ON purposes(website_id);
+CREATE INDEX IF NOT EXISTS idx_purposes_version_id ON purposes(website_version_id);
 CREATE INDEX IF NOT EXISTS idx_purposes_status ON purposes(status);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_purposes_website_tag ON purposes(website_id, tag);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_purposes_version_tag ON purposes(website_version_id, tag);
 
 -- 5.2 Purpose Translations Table
 CREATE TABLE IF NOT EXISTS purpose_translations (

@@ -1,30 +1,31 @@
-import { purposeRepository, websiteRepository, auditRepository } from '../repositories';
+import { purposeRepository, versionRepository, websiteRepository, auditRepository } from '../repositories';
 import { PurposeWithTranslations, Purpose, PurposeTranslation } from '../types';
 import { CreatePurposeInput, UpdatePurposeInput, PurposeTranslationInput } from '../validators';
 
 /**
  * Purpose Service.
  * Handles data processing purpose configuration with DPDPA compliance.
+ * Note: Purposes now belong to website versions, not websites directly.
  */
 export const purposeService = {
     /**
-     * Create a purpose for a website
+     * Create a purpose for a version
      */
     async create(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         input: CreatePurposeInput,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<PurposeWithTranslations> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         // Create purpose with translations
-        const purpose = await purposeRepository.createWithTranslations(websiteId, input);
+        const purpose = await purposeRepository.createWithTranslations(versionId, input);
 
         // Audit log
         await auditRepository.create(
@@ -35,7 +36,7 @@ export const purposeService = {
                 resourceType: 'purpose',
                 resourceId: purpose.id,
                 metadata: {
-                    websiteId,
+                    versionId,
                     isEssential: input.isEssential,
                     tag: input.tag,
                     languages: input.translations.map((t) => t.languageCode),
@@ -49,19 +50,19 @@ export const purposeService = {
     },
 
     /**
-     * Get all purposes for a website
+     * Get all purposes for a version
      */
-    async getByWebsiteId(
-        websiteId: string,
+    async getByVersionId(
+        versionId: string,
         tenantId: string
     ): Promise<PurposeWithTranslations[]> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
-        return purposeRepository.findByWebsiteId(websiteId);
+        return purposeRepository.findByVersionId(versionId);
     },
 
     /**
@@ -76,9 +77,9 @@ export const purposeService = {
             throw new Error('Purpose not found');
         }
 
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(purpose.websiteId, tenantId);
-        if (!website) {
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(purpose.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to purpose');
         }
 
@@ -101,15 +102,18 @@ export const purposeService = {
             throw new Error('Purpose not found');
         }
 
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(purpose.websiteId, tenantId);
-        if (!website) {
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(purpose.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to purpose');
         }
 
+        // Get website to check status
+        const website = await websiteRepository.findById(version.websiteId);
+
         // DPDPA: Cannot change essential status once website is active
         if (input.isEssential !== undefined && input.isEssential !== purpose.isEssential) {
-            if (website.status === 'ACTIVE') {
+            if (website && website.status === 'ACTIVE') {
                 throw new Error('Cannot change essential status while website is active');
             }
         }
@@ -166,9 +170,9 @@ export const purposeService = {
             throw new Error('Purpose not found');
         }
 
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(purpose.websiteId, tenantId);
-        if (!website) {
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(purpose.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to purpose');
         }
 
@@ -219,11 +223,14 @@ export const purposeService = {
             throw new Error('Purpose not found');
         }
 
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(purpose.websiteId, tenantId);
-        if (!website) {
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(purpose.versionId, tenantId);
+        if (!version) {
             throw new Error('Unauthorized access to purpose');
         }
+
+        // Get website to check status
+        const website = await websiteRepository.findById(version.websiteId);
 
         // Cannot delete essential purposes
         if (purpose.isEssential) {
@@ -231,11 +238,10 @@ export const purposeService = {
         }
 
         // Cannot delete if website is active
-        if (website.status === 'ACTIVE') {
+        if (website && website.status === 'ACTIVE') {
             throw new Error('Cannot delete purposes while website is active. Disable the website first.');
         }
 
-        // Note: Actual deletion would require a new repository method
         // For now, we just deactivate it
         await purposeRepository.update(purposeId, { status: 'INACTIVE' });
 
@@ -248,7 +254,7 @@ export const purposeService = {
                 resourceType: 'purpose',
                 resourceId: purposeId,
                 metadata: {
-                    websiteId: purpose.websiteId,
+                    versionId: purpose.versionId,
                 },
                 ipAddress: requestInfo.ipAddress,
                 userAgent: requestInfo.userAgent,
@@ -257,25 +263,25 @@ export const purposeService = {
     },
 
     /**
-     * Reorder purposes
+     * Reorder purposes within a version
      */
     async reorder(
-        websiteId: string,
+        versionId: string,
         tenantId: string,
         actorId: string,
         purposeOrders: Array<{ id: string; displayOrder: number }>,
         requestInfo: { ipAddress?: string; userAgent?: string }
     ): Promise<void> {
-        // Verify website ownership
-        const website = await websiteRepository.findByIdAndTenant(websiteId, tenantId);
-        if (!website) {
-            throw new Error('Website not found');
+        // Verify version ownership
+        const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
+        if (!version) {
+            throw new Error('Version not found');
         }
 
         // Update each purpose's display order
         for (const { id, displayOrder } of purposeOrders) {
             const purpose = await purposeRepository.findById(id);
-            if (purpose && purpose.websiteId === websiteId) {
+            if (purpose && purpose.versionId === versionId) {
                 await purposeRepository.update(id, { displayOrder });
             }
         }
@@ -286,8 +292,8 @@ export const purposeService = {
             actorId,
             'PURPOSES_REORDERED',
             {
-                resourceType: 'website',
-                resourceId: websiteId,
+                resourceType: 'version',
+                resourceId: versionId,
                 metadata: {
                     purposeOrders,
                 },

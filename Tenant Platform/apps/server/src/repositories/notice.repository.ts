@@ -5,28 +5,29 @@ import { PoolClient } from 'pg';
 
 /**
  * Repository for notice operations.
+ * Note: Notices are now tied to website_versions, not websites directly.
  */
 export const noticeRepository = {
     /**
      * Create notice with translations in a transaction
      */
     async createWithTranslations(
-        websiteId: string,
+        versionId: string,
         translations: NoticeTranslationInput[],
         dpoEmail?: string
     ): Promise<WebsiteNoticeWithTranslations> {
         return withTransaction(async (client: PoolClient) => {
             // Create the notice
             const noticeResult = await client.query<WebsiteNotice>(
-                `INSERT INTO website_notices (website_id, dpo_email)
+                `INSERT INTO website_notices (website_version_id, dpo_email)
                 VALUES ($1, $2)
                 RETURNING 
                     id, 
-                    website_id as "websiteId",
+                    website_version_id as "versionId",
                     dpo_email as "dpoEmail",
                     created_at as "createdAt",
                     updated_at as "updatedAt"`,
-                [websiteId, dpoEmail]
+                [versionId, dpoEmail]
             );
             const notice = noticeResult.rows[0];
 
@@ -74,7 +75,7 @@ export const noticeRepository = {
             WHERE id = $1
             RETURNING 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 dpo_email as "dpoEmail",
                 created_at as "createdAt",
                 updated_at as "updatedAt"`,
@@ -84,19 +85,19 @@ export const noticeRepository = {
     },
 
     /**
-     * Find notice by website ID with translations
+     * Find notice by version ID with translations
      */
-    async findByWebsiteId(websiteId: string): Promise<WebsiteNoticeWithTranslations | null> {
+    async findByVersionId(versionId: string): Promise<WebsiteNoticeWithTranslations | null> {
         const noticeResult = await query<WebsiteNotice>(
             `SELECT 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 dpo_email as "dpoEmail",
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_notices 
-            WHERE website_id = $1`,
-            [websiteId]
+            WHERE website_version_id = $1`,
+            [versionId]
         );
 
         if (noticeResult.rows.length === 0) {
@@ -119,7 +120,7 @@ export const noticeRepository = {
         const result = await query<WebsiteNotice>(
             `SELECT 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 dpo_email as "dpoEmail",
                 created_at as "createdAt",
                 updated_at as "updatedAt"
@@ -228,15 +229,15 @@ export const noticeRepository = {
     },
 
     /**
-     * Check if notice exists for website
+     * Check if notice exists for version
      */
-    async existsForWebsite(websiteId: string): Promise<boolean> {
+    async existsForVersion(versionId: string): Promise<boolean> {
         const result = await query<{ exists: boolean }>(
             `SELECT EXISTS (
                 SELECT 1 FROM website_notices 
-                WHERE website_id = $1
+                WHERE website_version_id = $1
             ) as exists`,
-            [websiteId]
+            [versionId]
         );
         return result.rows[0].exists;
     },

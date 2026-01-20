@@ -1,11 +1,13 @@
 -- ============================================================================
 -- SECTION 6: BANNER CUSTOMIZATION & TRANSLATIONS
 -- ============================================================================
+-- NOTE: Banner config now belongs to website_versions, not directly to websites.
+-- This enables versioning of consent configurations.
 
 -- 6.1 Banner Customization (Styles - Language Agnostic)
 CREATE TABLE IF NOT EXISTS banner_customizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    website_id UUID NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
+    website_version_id UUID NOT NULL REFERENCES website_versions(id) ON DELETE CASCADE,
     
     -- Primary Colors (DPDPA requires equal prominence)
     primary_color VARCHAR(7) NOT NULL DEFAULT '#0066CC',
@@ -36,14 +38,14 @@ CREATE TABLE IF NOT EXISTS banner_customizations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- Only one customization per website
-    CONSTRAINT unique_website_banner UNIQUE (website_id)
+    -- Only one customization per version
+    CONSTRAINT unique_version_banner UNIQUE (website_version_id)
 );
 
 -- 6.2 Banner Translations (Multi-Language Text)
 CREATE TABLE IF NOT EXISTS website_banner_translations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    website_id UUID NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
+    website_version_id UUID NOT NULL REFERENCES website_versions(id) ON DELETE CASCADE,
     language_code VARCHAR(10) NOT NULL,
     
     -- Banner Text Content (Translatable)
@@ -56,11 +58,11 @@ CREATE TABLE IF NOT EXISTS website_banner_translations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- One translation per language per website
-    CONSTRAINT unique_banner_translation UNIQUE (website_id, language_code)
+    -- One translation per language per version
+    CONSTRAINT unique_banner_translation UNIQUE (website_version_id, language_code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_banner_translations_website ON website_banner_translations(website_id);
+CREATE INDEX IF NOT EXISTS idx_banner_translations_version ON website_banner_translations(website_version_id);
 CREATE INDEX IF NOT EXISTS idx_banner_translations_language ON website_banner_translations(language_code);
 
 -- Down Migration

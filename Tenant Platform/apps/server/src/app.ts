@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from './middleware';
 import {
     authRoutes,
     websiteRoutes,
+    versionRoutes,
     noticeRoutes,
     purposeRoutes,
     bannerRoutes,
@@ -72,6 +73,9 @@ export async function buildApp() {
 
         // Website routes
         await api.register(websiteRoutes, { prefix: '/websites' });
+
+        // Version routes (mixed prefixes - some under /websites, some under /versions)
+        await api.register(versionRoutes, { prefix: '' });
 
         // Notice routes (mixed prefixes handled internally)
         await api.register(noticeRoutes, { prefix: '' });

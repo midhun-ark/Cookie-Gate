@@ -5,30 +5,31 @@ import { PoolClient } from 'pg';
 
 /**
  * Repository for purpose operations.
+ * Note: Purposes are now tied to website_versions, not websites directly.
  */
 export const purposeRepository = {
     /**
      * Create purpose with translations in a transaction
      */
     async createWithTranslations(
-        websiteId: string,
+        versionId: string,
         input: CreatePurposeInput
     ): Promise<PurposeWithTranslations> {
         return withTransaction(async (client: PoolClient) => {
             // Create the purpose
             const purposeResult = await client.query<Purpose>(
-                `INSERT INTO purposes (website_id, is_essential, tag, display_order)
+                `INSERT INTO purposes (website_version_id, is_essential, tag, display_order)
                 VALUES ($1, $2, $3, $4)
                 RETURNING 
                     id, 
-                    website_id as "websiteId",
+                    website_version_id as "versionId",
                     is_essential as "isEssential",
                     tag,
                     status,
                     display_order as "displayOrder",
                     created_at as "createdAt",
                     updated_at as "updatedAt"`,
-                [websiteId, input.isEssential, input.tag, input.displayOrder]
+                [versionId, input.isEssential, input.tag, input.displayOrder]
             );
             const purpose = purposeResult.rows[0];
 
@@ -60,13 +61,13 @@ export const purposeRepository = {
     },
 
     /**
-     * Find all purposes for a website with translations
+     * Find all purposes for a version with translations
      */
-    async findByWebsiteId(websiteId: string): Promise<PurposeWithTranslations[]> {
+    async findByVersionId(versionId: string): Promise<PurposeWithTranslations[]> {
         const purposeResult = await query<Purpose>(
             `SELECT 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 is_essential as "isEssential",
                 tag,
                 status,
@@ -74,9 +75,9 @@ export const purposeRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM purposes 
-            WHERE website_id = $1
+            WHERE website_version_id = $1
             ORDER BY display_order, created_at`,
-            [websiteId]
+            [versionId]
         );
 
         const purposes: PurposeWithTranslations[] = [];
@@ -95,7 +96,7 @@ export const purposeRepository = {
         const result = await query<Purpose>(
             `SELECT 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 is_essential as "isEssential",
                 tag,
                 status,
@@ -171,8 +172,9 @@ export const purposeRepository = {
             WHERE id = $${paramIndex}
             RETURNING 
                 id, 
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 is_essential as "isEssential",
+                tag,
                 status,
                 display_order as "displayOrder",
                 created_at as "createdAt",
@@ -260,13 +262,13 @@ export const purposeRepository = {
     },
 
     /**
-     * Get website ID for a purpose
+     * Get version ID for a purpose
      */
-    async getWebsiteId(purposeId: string): Promise<string | null> {
-        const result = await query<{ websiteId: string }>(
-            `SELECT website_id as "websiteId" FROM purposes WHERE id = $1`,
+    async getVersionId(purposeId: string): Promise<string | null> {
+        const result = await query<{ versionId: string }>(
+            `SELECT website_version_id as "versionId" FROM purposes WHERE id = $1`,
             [purposeId]
         );
-        return result.rows[0]?.websiteId || null;
+        return result.rows[0]?.versionId || null;
     },
 };

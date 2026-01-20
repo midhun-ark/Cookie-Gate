@@ -119,8 +119,9 @@ export const websiteRepository = {
     /**
      * Update website status
      */
-    async updateStatus(id: string, status: WebsiteStatus): Promise<Website | null> {
-        const result = await query<Website>(
+    async updateStatus(id: string, status: WebsiteStatus, client?: PoolClient): Promise<Website | null> {
+        const queryFn = client ? client.query.bind(client) : query;
+        const result = await queryFn(
             `UPDATE websites 
             SET status = $1, updated_at = NOW()
             WHERE id = $2
@@ -132,35 +133,46 @@ export const websiteRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"`,
             [status, id]
-        );
+        ) as { rows: Website[] };
         return result.rows[0] || null;
     },
 
     /**
      * Check if website can be activated (has required components)
+     * Checks the active version's data using website_version_id
      */
     async canActivate(websiteId: string): Promise<{
         canActivate: boolean;
         reasons: string[];
     }> {
         const result = await query<{
+            hasActiveVersion: boolean;
             hasEnglishNotice: boolean;
             hasAtLeastOnePurpose: boolean;
             allEssentialPurposesHaveEnglish: boolean;
         }>(
-            `SELECT
+            `WITH active_version AS (
+                SELECT id FROM website_versions 
+                WHERE website_id = $1 
+                ORDER BY version_number DESC
+                LIMIT 1
+            )
+            SELECT
+                EXISTS (SELECT 1 FROM active_version) as "hasActiveVersion",
                 EXISTS (
                     SELECT 1 FROM website_notices wn
                     JOIN website_notice_translations wnt ON wn.id = wnt.website_notice_id
-                    WHERE wn.website_id = $1 AND wnt.language_code = 'en'
+                    WHERE wn.website_version_id = (SELECT id FROM active_version) 
+                    AND wnt.language_code = 'en'
                 ) as "hasEnglishNotice",
                 EXISTS (
                     SELECT 1 FROM purposes 
-                    WHERE website_id = $1 AND status = 'ACTIVE'
+                    WHERE website_version_id = (SELECT id FROM active_version) 
+                    AND status = 'ACTIVE'
                 ) as "hasAtLeastOnePurpose",
                 NOT EXISTS (
                     SELECT 1 FROM purposes p
-                    WHERE p.website_id = $1 
+                    WHERE p.website_version_id = (SELECT id FROM active_version)
                     AND p.is_essential = TRUE 
                     AND p.status = 'ACTIVE'
                     AND NOT EXISTS (
@@ -174,8 +186,11 @@ export const websiteRepository = {
         const checks = result.rows[0];
         const reasons: string[] = [];
 
+        if (!checks.hasActiveVersion) {
+            reasons.push('No active version found');
+        }
         if (!checks.hasEnglishNotice) {
-            reasons.push('English notice translation is required');
+            reasons.push('Notice incomplete. DPO/Grievance Officer Email or Cookie Policy Link missing.');
         }
         if (!checks.hasAtLeastOnePurpose) {
             reasons.push('At least one active purpose is required');

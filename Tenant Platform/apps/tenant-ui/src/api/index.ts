@@ -7,6 +7,7 @@ import type {
     WebsiteWithStats,
     Website,
     CanActivateResult,
+    WebsiteVersion,
     WebsiteNotice,
     Purpose,
     BannerCustomization,
@@ -92,18 +93,57 @@ export const websiteApi = {
     },
 };
 
+// ==================== VERSIONS ====================
+
+export const versionApi = {
+    list: async (websiteId: string): Promise<WebsiteVersion[]> => {
+        const response = await api.get<ApiResponse<WebsiteVersion[]>>(`/websites/${websiteId}/versions`);
+        return response.data.data!;
+    },
+
+    get: async (websiteId: string, versionId: string): Promise<WebsiteVersion> => {
+        const response = await api.get<ApiResponse<WebsiteVersion>>(`/websites/${websiteId}/versions/${versionId}`);
+        return response.data.data!;
+    },
+
+    getActive: async (websiteId: string): Promise<WebsiteVersion | null> => {
+        const response = await api.get<ApiResponse<WebsiteVersion | null>>(`/websites/${websiteId}/versions/active`);
+        return response.data.data ?? null;
+    },
+
+    create: async (websiteId: string, versionName?: string): Promise<WebsiteVersion> => {
+        const response = await api.post<ApiResponse<WebsiteVersion>>(`/websites/${websiteId}/versions`, { versionName });
+        return response.data.data!;
+    },
+
+    updateName: async (websiteId: string, versionId: string, versionName: string): Promise<WebsiteVersion> => {
+        const response = await api.patch<ApiResponse<WebsiteVersion>>(`/websites/${websiteId}/versions/${versionId}`, { versionName });
+        return response.data.data!;
+    },
+
+    activate: async (websiteId: string, versionId: string): Promise<WebsiteVersion> => {
+        const response = await api.post<ApiResponse<WebsiteVersion>>(`/websites/${websiteId}/versions/${versionId}/activate`);
+        return response.data.data!;
+    },
+
+    archive: async (versionId: string): Promise<WebsiteVersion> => {
+        const response = await api.post<ApiResponse<WebsiteVersion>>(`/versions/${versionId}/archive`);
+        return response.data.data!;
+    },
+};
+
 // ==================== NOTICES ====================
 
 export const noticeApi = {
-    get: async (websiteId: string): Promise<WebsiteNotice | null> => {
+    get: async (versionId: string): Promise<WebsiteNotice | null> => {
         const response = await api.get<ApiResponse<WebsiteNotice | null>>(
-            `/websites/${websiteId}/notices`
+            `/versions/${versionId}/notices`
         );
         return response.data.data ?? null;
     },
 
     create: async (
-        websiteId: string,
+        versionId: string,
         data: {
             dpoEmail?: string;
             translations: Array<{
@@ -120,7 +160,7 @@ export const noticeApi = {
         }
     ): Promise<WebsiteNotice> => {
         const response = await api.post<ApiResponse<WebsiteNotice>>(
-            `/websites/${websiteId}/notices`,
+            `/versions/${versionId}/notices`,
             data
         );
         return response.data.data!;
@@ -148,8 +188,8 @@ export const noticeApi = {
 // ==================== PURPOSES ====================
 
 export const purposeApi = {
-    list: async (websiteId: string): Promise<Purpose[]> => {
-        const response = await api.get<ApiResponse<Purpose[]>>(`/websites/${websiteId}/purposes`);
+    list: async (versionId: string): Promise<Purpose[]> => {
+        const response = await api.get<ApiResponse<Purpose[]>>(`/versions/${versionId}/purposes`);
         return response.data.data!;
     },
 
@@ -159,7 +199,7 @@ export const purposeApi = {
     },
 
     create: async (
-        websiteId: string,
+        versionId: string,
         data: {
             isEssential: boolean;
             tag: string;
@@ -172,7 +212,7 @@ export const purposeApi = {
         }
     ): Promise<Purpose> => {
         const response = await api.post<ApiResponse<Purpose>>(
-            `/websites/${websiteId}/purposes`,
+            `/versions/${versionId}/purposes`,
             data
         );
         return response.data.data!;
@@ -206,55 +246,55 @@ export const purposeApi = {
     },
 
     reorder: async (
-        websiteId: string,
+        versionId: string,
         orders: Array<{ id: string; displayOrder: number }>
     ): Promise<void> => {
-        await api.post(`/websites/${websiteId}/purposes/reorder`, { orders });
+        await api.post(`/versions/${versionId}/purposes/reorder`, { orders });
     },
 };
 
 // ==================== BANNER ====================
 
 export const bannerApi = {
-    get: async (websiteId: string): Promise<BannerCustomization> => {
+    get: async (versionId: string): Promise<BannerCustomization> => {
         const response = await api.get<ApiResponse<BannerCustomization>>(
-            `/websites/${websiteId}/banner`
+            `/versions/${versionId}/banner`
         );
         return response.data.data!;
     },
 
-    save: async (websiteId: string, data: BannerCustomization): Promise<BannerCustomization> => {
+    save: async (versionId: string, data: BannerCustomization): Promise<BannerCustomization> => {
         const response = await api.post<ApiResponse<BannerCustomization>>(
-            `/websites/${websiteId}/banner`,
+            `/versions/${versionId}/banner`,
             data
         );
         return response.data.data!;
     },
 
     update: async (
-        websiteId: string,
+        versionId: string,
         data: Partial<BannerCustomization>
     ): Promise<BannerCustomization> => {
         const response = await api.patch<ApiResponse<BannerCustomization>>(
-            `/websites/${websiteId}/banner`,
+            `/versions/${versionId}/banner`,
             data
         );
         return response.data.data!;
     },
 
-    reset: async (websiteId: string): Promise<BannerCustomization> => {
+    reset: async (versionId: string): Promise<BannerCustomization> => {
         const response = await api.post<ApiResponse<BannerCustomization>>(
-            `/websites/${websiteId}/banner/reset`
+            `/versions/${versionId}/banner/reset`
         );
         return response.data.data!;
     },
 
-    getPreviewUrl: (websiteId: string): string => {
-        return `/tenant/websites/${websiteId}/banner/preview`;
+    getPreviewUrl: (versionId: string): string => {
+        return `/tenant/versions/${versionId}/banner/preview`;
     },
 
     // Translation methods
-    getTranslations: async (websiteId: string): Promise<Array<{
+    getTranslations: async (versionId: string): Promise<Array<{
         languageCode: string;
         headlineText: string;
         descriptionText: string;
@@ -269,12 +309,12 @@ export const bannerApi = {
             acceptButtonText: string;
             rejectButtonText: string;
             preferencesButtonText: string;
-        }>>>(`/websites/${websiteId}/banner/translations`);
+        }>>>(`/versions/${versionId}/banner/translations`);
         return response.data.data!;
     },
 
     saveTranslations: async (
-        websiteId: string,
+        versionId: string,
         translations: Array<{
             languageCode: string;
             headlineText: string;
@@ -284,7 +324,7 @@ export const bannerApi = {
             preferencesButtonText: string;
         }>
     ): Promise<void> => {
-        await api.post(`/websites/${websiteId}/banner/translations`, { translations });
+        await api.post(`/versions/${versionId}/banner/translations`, { translations });
     },
 };
 

@@ -138,7 +138,7 @@ Response:
 {
   "canActivate": false,
   "reasons": [
-    "English notice translation is required",
+    "Notice incomplete. DPO/Grievance Officer Email or Cookie Policy Link missing.",
     "At least one active purpose is required"
   ]
 }

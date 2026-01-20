@@ -2,8 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { bannerService } from '../services';
 import {
     bannerCustomizationSchema,
-    updateBannerCustomizationSchema,
-    websiteIdParamSchema
+    updateBannerCustomizationSchema
 } from '../validators';
 import {
     authMiddleware,
@@ -11,9 +10,16 @@ import {
     getRequestInfo,
     getCurrentUser
 } from '../middleware';
+import { z } from 'zod';
+
+// Version ID param schema
+const versionIdParamSchema = z.object({
+    versionId: z.string().uuid('Invalid version ID'),
+});
 
 /**
  * Banner Customization Routes
+ * Note: Banners now belong to website versions, not websites directly.
  */
 export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     // All routes require authentication
@@ -21,16 +27,16 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     app.addHook('preHandler', requirePasswordReset);
 
     /**
-     * GET /tenant/websites/:id/banner
-     * Get banner customization for a website
+     * GET /tenant/versions/:versionId/banner
+     * Get banner customization for a version
      */
-    app.get<{ Params: { id: string } }>(
-        '/websites/:id/banner',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.get<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { tenantId } = getCurrentUser(request);
 
-            const banner = await bannerService.getWithDefaults(websiteId, tenantId);
+            const banner = await bannerService.getWithDefaults(versionId, tenantId);
 
             return {
                 success: true,
@@ -40,19 +46,19 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/banner
+     * POST /tenant/versions/:versionId/banner
      * Create or update banner customization
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/banner',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const input = bannerCustomizationSchema.parse(request.body);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
             const banner = await bannerService.upsert(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 input,
@@ -68,19 +74,19 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * PATCH /tenant/websites/:id/banner
+     * PATCH /tenant/versions/:versionId/banner
      * Partial update banner customization
      */
-    app.patch<{ Params: { id: string } }>(
-        '/websites/:id/banner',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.patch<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const input = updateBannerCustomizationSchema.parse(request.body);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
             const banner = await bannerService.update(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 input,
@@ -96,18 +102,18 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/banner/reset
+     * POST /tenant/versions/:versionId/banner/reset
      * Reset banner to defaults
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/banner/reset',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner/reset',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
             const banner = await bannerService.resetToDefaults(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 requestInfo
@@ -122,16 +128,16 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * GET /tenant/websites/:id/banner/preview
+     * GET /tenant/versions/:versionId/banner/preview
      * Get banner preview HTML
      */
-    app.get<{ Params: { id: string } }>(
-        '/websites/:id/banner/preview',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.get<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner/preview',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { tenantId } = getCurrentUser(request);
 
-            const html = await bannerService.getPreviewHtml(websiteId, tenantId);
+            const html = await bannerService.getPreviewHtml(versionId, tenantId);
 
             reply.type('text/html').send(html);
         }
@@ -140,17 +146,16 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     // ==================== TRANSLATION ROUTES ====================
 
     /**
-     * GET /tenant/websites/:id/banner/translations
-     * Get all banner translations for a website
+     * GET /tenant/versions/:versionId/banner/translations
+     * Get all banner translations for a version
      */
-    app.get<{ Params: { id: string } }>(
-        '/websites/:id/banner/translations',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.get<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner/translations',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { tenantId } = getCurrentUser(request);
 
-            // Verify website access
-            const translations = await bannerService.getTranslations(websiteId, tenantId);
+            const translations = await bannerService.getTranslations(versionId, tenantId);
 
             return {
                 success: true,
@@ -160,13 +165,13 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/banner/translations
+     * POST /tenant/versions/:versionId/banner/translations
      * Create or update banner translations
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/banner/translations',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/banner/translations',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
             const { translations } = request.body as {
@@ -181,7 +186,7 @@ export async function bannerRoutes(app: FastifyInstance): Promise<void> {
             };
 
             const result = await bannerService.upsertTranslations(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 translations,

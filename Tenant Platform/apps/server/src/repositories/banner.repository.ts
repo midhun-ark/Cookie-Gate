@@ -4,16 +4,17 @@ import { BannerCustomizationInput, UpdateBannerCustomizationInput } from '../val
 
 /**
  * Repository for banner customization operations.
+ * Note: Banners are now tied to website_versions, not websites directly.
  */
 export const bannerRepository = {
     /**
-     * Get banner customization for a website
+     * Get banner customization for a version
      */
-    async findByWebsiteId(websiteId: string): Promise<BannerCustomization | null> {
+    async findByVersionId(versionId: string): Promise<BannerCustomization | null> {
         const result = await query<BannerCustomization>(
             `SELECT 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 primary_color as "primaryColor",
                 secondary_color as "secondaryColor",
                 background_color as "backgroundColor",
@@ -31,8 +32,8 @@ export const bannerRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM banner_customizations
-            WHERE website_id = $1`,
-            [websiteId]
+            WHERE website_version_id = $1`,
+            [versionId]
         );
         return result.rows[0] || null;
     },
@@ -41,12 +42,12 @@ export const bannerRepository = {
      * Create or update banner customization (upsert)
      */
     async upsert(
-        websiteId: string,
+        versionId: string,
         input: BannerCustomizationInput
     ): Promise<BannerCustomization> {
         const result = await query<BannerCustomization>(
             `INSERT INTO banner_customizations (
-                website_id,
+                website_version_id,
                 primary_color,
                 secondary_color,
                 background_color,
@@ -63,7 +64,7 @@ export const bannerRepository = {
                 focus_outline_color
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            ON CONFLICT (website_id) 
+            ON CONFLICT (website_version_id) 
             DO UPDATE SET 
                 primary_color = EXCLUDED.primary_color,
                 secondary_color = EXCLUDED.secondary_color,
@@ -82,7 +83,7 @@ export const bannerRepository = {
                 updated_at = NOW()
             RETURNING 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 primary_color as "primaryColor",
                 secondary_color as "secondaryColor",
                 background_color as "backgroundColor",
@@ -100,7 +101,7 @@ export const bannerRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"`,
             [
-                websiteId,
+                versionId,
                 input.primaryColor,
                 input.secondaryColor,
                 input.backgroundColor,
@@ -124,7 +125,7 @@ export const bannerRepository = {
      * Partial update banner customization
      */
     async update(
-        websiteId: string,
+        versionId: string,
         input: UpdateBannerCustomizationInput
     ): Promise<BannerCustomization | null> {
         // Build dynamic update query
@@ -159,18 +160,18 @@ export const bannerRepository = {
 
         if (updates.length === 1) {
             // Only updated_at, nothing to update
-            return this.findByWebsiteId(websiteId);
+            return this.findByVersionId(versionId);
         }
 
-        values.push(websiteId);
+        values.push(versionId);
 
         const result = await query<BannerCustomization>(
             `UPDATE banner_customizations 
             SET ${updates.join(', ')}
-            WHERE website_id = $${paramIndex}
+            WHERE website_version_id = $${paramIndex}
             RETURNING 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 primary_color as "primaryColor",
                 secondary_color as "secondaryColor",
                 background_color as "backgroundColor",
@@ -217,13 +218,13 @@ export const bannerRepository = {
     // ==================== Translation Methods ====================
 
     /**
-     * Get all translations for a website's banner
+     * Get all translations for a version's banner
      */
-    async getTranslations(websiteId: string): Promise<BannerTranslation[]> {
+    async getTranslations(versionId: string): Promise<BannerTranslation[]> {
         const result = await query<BannerTranslation>(
             `SELECT 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 language_code as "languageCode",
                 headline_text as "headlineText",
                 description_text as "descriptionText",
@@ -233,9 +234,9 @@ export const bannerRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_banner_translations
-            WHERE website_id = $1
+            WHERE website_version_id = $1
             ORDER BY CASE WHEN language_code = 'en' THEN 0 ELSE 1 END, language_code`,
-            [websiteId]
+            [versionId]
         );
         return result.rows;
     },
@@ -243,11 +244,11 @@ export const bannerRepository = {
     /**
      * Get translation for a specific language
      */
-    async getTranslation(websiteId: string, languageCode: string): Promise<BannerTranslation | null> {
+    async getTranslation(versionId: string, languageCode: string): Promise<BannerTranslation | null> {
         const result = await query<BannerTranslation>(
             `SELECT 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 language_code as "languageCode",
                 headline_text as "headlineText",
                 description_text as "descriptionText",
@@ -257,8 +258,8 @@ export const bannerRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"
             FROM website_banner_translations
-            WHERE website_id = $1 AND language_code = $2`,
-            [websiteId, languageCode]
+            WHERE website_version_id = $1 AND language_code = $2`,
+            [versionId, languageCode]
         );
         return result.rows[0] || null;
     },
@@ -267,7 +268,7 @@ export const bannerRepository = {
      * Upsert a banner translation
      */
     async upsertTranslation(
-        websiteId: string,
+        versionId: string,
         languageCode: string,
         input: {
             headlineText: string;
@@ -279,10 +280,10 @@ export const bannerRepository = {
     ): Promise<BannerTranslation> {
         const result = await query<BannerTranslation>(
             `INSERT INTO website_banner_translations (
-                website_id, language_code, headline_text, description_text,
+                website_version_id, language_code, headline_text, description_text,
                 accept_button_text, reject_button_text, preferences_button_text
             ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (website_id, language_code)
+            ON CONFLICT (website_version_id, language_code)
             DO UPDATE SET
                 headline_text = EXCLUDED.headline_text,
                 description_text = EXCLUDED.description_text,
@@ -292,7 +293,7 @@ export const bannerRepository = {
                 updated_at = NOW()
             RETURNING 
                 id,
-                website_id as "websiteId",
+                website_version_id as "versionId",
                 language_code as "languageCode",
                 headline_text as "headlineText",
                 description_text as "descriptionText",
@@ -302,7 +303,7 @@ export const bannerRepository = {
                 created_at as "createdAt",
                 updated_at as "updatedAt"`,
             [
-                websiteId,
+                versionId,
                 languageCode,
                 input.headlineText,
                 input.descriptionText,

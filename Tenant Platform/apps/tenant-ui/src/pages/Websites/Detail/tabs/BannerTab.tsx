@@ -37,7 +37,7 @@ const DEFAULT_TRANSLATION: Omit<BannerTranslation, 'languageCode'> = {
     preferencesButtonText: 'Settings',
 };
 
-export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
+export function BannerTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [config, setConfig] = useState<BannerCustomization>(DEFAULT_BANNER);
     const [translations, setTranslations] = useState<BannerTranslation[]>([]);
@@ -48,10 +48,10 @@ export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: (
 
     // Fetch styles
     const { data: serverConfig, isLoading: loadingStyles } = useQuery({
-        queryKey: ['banner', websiteId],
+        queryKey: ['banner', versionId],
         queryFn: async () => {
             try {
-                return await bannerApi.get(websiteId);
+                return await bannerApi.get(versionId);
             } catch (err: any) {
                 if (err.response?.status === 404) return DEFAULT_BANNER;
                 throw err;
@@ -61,8 +61,8 @@ export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: (
 
     // Fetch translations
     const { data: serverTranslations, isLoading: loadingTranslations } = useQuery({
-        queryKey: ['bannerTranslations', websiteId],
-        queryFn: () => bannerApi.getTranslations(websiteId)
+        queryKey: ['bannerTranslations', versionId],
+        queryFn: () => bannerApi.getTranslations(versionId)
     });
 
     // Fetch languages
@@ -88,9 +88,9 @@ export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: (
 
     // Save styles mutation
     const saveStyleMutation = useMutation({
-        mutationFn: () => bannerApi.save(websiteId, config),
+        mutationFn: () => bannerApi.save(versionId, config),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['banner', websiteId] });
+            queryClient.invalidateQueries({ queryKey: ['banner', versionId] });
             setIsDirty(false);
             onSave?.();
         },
@@ -99,9 +99,9 @@ export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: (
 
     // Save translations mutation
     const saveTranslationMutation = useMutation({
-        mutationFn: () => bannerApi.saveTranslations(websiteId, translations),
+        mutationFn: () => bannerApi.saveTranslations(versionId, translations),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['bannerTranslations', websiteId] });
+            queryClient.invalidateQueries({ queryKey: ['bannerTranslations', versionId] });
             setIsTextDirty(false);
             onSave?.();
         },
@@ -109,7 +109,7 @@ export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: (
     });
 
     const resetMutation = useMutation({
-        mutationFn: () => bannerApi.reset(websiteId),
+        mutationFn: () => bannerApi.reset(versionId),
         onSuccess: (data) => { setConfig(data); setIsDirty(false); }
     });
 

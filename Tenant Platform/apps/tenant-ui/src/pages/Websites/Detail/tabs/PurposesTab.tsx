@@ -11,15 +11,15 @@ interface Translation {
     description: string;
 }
 
-export function PurposesTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
+export function PurposesTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [viewLang, setViewLang] = useState('en');
 
     const { data: purposes, isLoading } = useQuery({
-        queryKey: ['purposes', websiteId],
-        queryFn: () => purposeApi.list(websiteId),
+        queryKey: ['purposes', versionId],
+        queryFn: () => purposeApi.list(versionId),
     });
 
     const { data: languages = [] } = useQuery({
@@ -29,7 +29,7 @@ export function PurposesTab({ websiteId, onSave }: { websiteId: string; onSave?:
 
     const deleteMutation = useMutation({
         mutationFn: purposeApi.delete,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purposes', versionId] }),
     });
 
     const handleEdit = (id: string) => { setEditingId(id); setIsModalOpen(true); };
@@ -149,11 +149,11 @@ export function PurposesTab({ websiteId, onSave }: { websiteId: string; onSave?:
                             </button>
                         </div>
                         <PurposeForm
-                            websiteId={websiteId}
+                            versionId={versionId}
                             purpose={purposes?.find((p) => p.id === editingId)}
                             key={editingId || 'new'}
                             onCancel={handleCloseModal}
-                            onSuccess={() => { handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); onSave?.(); }}
+                            onSuccess={() => { handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['purposes', versionId] }); onSave?.(); }}
                         />
                     </div>
                 </div>
@@ -162,7 +162,7 @@ export function PurposesTab({ websiteId, onSave }: { websiteId: string; onSave?:
     );
 }
 
-function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: string; purpose?: Purpose; onCancel: () => void; onSuccess: () => void; }) {
+function PurposeForm({ versionId, purpose, onCancel, onSuccess }: { versionId: string; purpose?: Purpose; onCancel: () => void; onSuccess: () => void; }) {
     const queryClient = useQueryClient();
     const isEditing = !!purpose;
     const [isEssential, setIsEssential] = useState(purpose?.isEssential || false);
@@ -223,7 +223,7 @@ function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: s
                 await purposeApi.update(purpose.id, { isEssential });
                 await purposeApi.updateTranslations(purpose.id, validTranslations);
             } else {
-                await purposeApi.create(websiteId, { isEssential, tag, displayOrder: 0, translations: validTranslations });
+                await purposeApi.create(versionId, { isEssential, tag, displayOrder: 0, translations: validTranslations });
             }
         },
         onSuccess,
@@ -302,7 +302,7 @@ function PurposeForm({ websiteId, purpose, onCancel, onSuccess }: { websiteId: s
                     <button onClick={onCancel} style={{ flex: 1, padding: '8px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}>Cancel</button>
                 ) : (
                     <button
-                        onClick={() => saveMutation.mutate(undefined, { onSuccess: () => { setTranslations([{ languageCode: 'en', name: '', description: '' }]); setTag(''); setIsEssential(false); setSelectedLang('en'); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); } })}
+                        onClick={() => saveMutation.mutate(undefined, { onSuccess: () => { setTranslations([{ languageCode: 'en', name: '', description: '' }]); setTag(''); setIsEssential(false); setSelectedLang('en'); queryClient.invalidateQueries({ queryKey: ['purposes', versionId] }); } })}
                         disabled={saveMutation.isPending || !canSave}
                         style={{ flex: 1, padding: '8px', fontSize: '13px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151', opacity: saveMutation.isPending || !canSave ? 0.5 : 1 }}
                     >

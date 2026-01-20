@@ -4,7 +4,6 @@ import {
     createNoticeSchema,
     updateNoticeTranslationSchema,
     batchUpdateTranslationsSchema,
-    websiteIdParamSchema,
     noticeIdParamSchema
 } from '../validators';
 import {
@@ -13,9 +12,16 @@ import {
     getRequestInfo,
     getCurrentUser
 } from '../middleware';
+import { z } from 'zod';
+
+// Version ID param schema
+const versionIdParamSchema = z.object({
+    versionId: z.string().uuid('Invalid version ID'),
+});
 
 /**
  * Notice Routes
+ * Note: Notices now belong to website versions, not websites directly.
  */
 export async function noticeRoutes(app: FastifyInstance): Promise<void> {
     // All routes require authentication
@@ -23,16 +29,16 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
     app.addHook('preHandler', requirePasswordReset);
 
     /**
-     * GET /tenant/websites/:id/notices
-     * Get notice for a website
+     * GET /tenant/versions/:versionId/notices
+     * Get notice for a version
      */
-    app.get<{ Params: { id: string } }>(
-        '/websites/:id/notices',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.get<{ Params: { versionId: string } }>(
+        '/versions/:versionId/notices',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const { tenantId } = getCurrentUser(request);
 
-            const notice = await noticeService.getByWebsiteId(websiteId, tenantId);
+            const notice = await noticeService.getByVersionId(versionId, tenantId);
 
             return {
                 success: true,
@@ -42,19 +48,19 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
     );
 
     /**
-     * POST /tenant/websites/:id/notices
-     * Create notice for a website
+     * POST /tenant/versions/:versionId/notices
+     * Create notice for a version
      */
-    app.post<{ Params: { id: string } }>(
-        '/websites/:id/notices',
-        async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-            const { id: websiteId } = websiteIdParamSchema.parse(request.params);
+    app.post<{ Params: { versionId: string } }>(
+        '/versions/:versionId/notices',
+        async (request: FastifyRequest<{ Params: { versionId: string } }>, reply: FastifyReply) => {
+            const { versionId } = versionIdParamSchema.parse(request.params);
             const input = createNoticeSchema.parse(request.body);
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
             const notice = await noticeService.create(
-                websiteId,
+                versionId,
                 tenantId,
                 userId,
                 input,
@@ -97,8 +103,6 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
             };
         }
     );
-
-    // ... (Put / Delete / Get methods remain same)
 
     /**
      * PUT /tenant/notices/:noticeId/translations/:languageCode

@@ -13,15 +13,22 @@ import {
     Play,
     Loader2,
     Clock,
-    ExternalLink
+    ExternalLink,
+    Plus,
+    Edit,
+    Trash2,
+    History,
+    ChevronDown,
+    Archive
 } from 'lucide-react';
-import { websiteApi } from '@/api';
+import { websiteApi, versionApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
 import { NoticeTab } from './tabs/NoticeTab';
 import { PurposesTab } from './tabs/PurposesTab';
 import { BannerTab } from './tabs/BannerTab';
 import { InstallTab } from './tabs/InstallTab';
 import { TranslationsTab } from './tabs/TranslationsTab';
+import { ConfirmModal } from '@/components';
 import './WebsiteDetail.css';
 
 type TabId = 'notice' | 'purposes' | 'banner' | 'translations' | 'install';
@@ -33,9 +40,12 @@ export function WebsiteDetailPage() {
     const [activeTab, setActiveTab] = useState<TabId>('banner');
     const [activateError, setActivateError] = useState('');
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const [showVersionHistory, setShowVersionHistory] = useState(false);
 
     const handleSave = () => {
         setLastSaved(new Date());
+        queryClient.invalidateQueries({ queryKey: ['website', id, 'can-activate'] });
     };
 
     const { data: website, isLoading } = useQuery({
@@ -50,23 +60,71 @@ export function WebsiteDetailPage() {
         enabled: !!id,
     });
 
+    // Fetch all versions to determine the working version (latest)
+    const { data: versions, isLoading: isLoadingVersions } = useQuery({
+        queryKey: ['website', id, 'versions'],
+        queryFn: () => versionApi.list(id!),
+        enabled: !!id && !!website,
+    });
+
+    // Use the latest version (Draft or Active) as the working version
+    // The API sorts by version number DESC, so the first one is the latest
+    const workingVersion = versions?.[0];
+
+    // Check if ANY draft version exists - this determines button visibility
+    // Since initial versions are now created as DRAFT, this handles all cases
+    const hasDraftVersion = versions?.some(v => v.status === 'DRAFT') ?? false;
+
+    const createVersionMutation = useMutation({
+        mutationFn: () => versionApi.create(id!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['website', id] });
+            queryClient.invalidateQueries({ queryKey: ['website', id, 'versions'] });
+            // Switch to notice tab to encourage reviewing settings
+            setActiveTab('notice');
+        },
+        onError: (err) => {
+            setActivateError(getErrorMessage(err));
+            setTimeout(() => setActivateError(''), 5000);
+        }
+    });
+
     const activateMutation = useMutation({
         mutationFn: () => websiteApi.updateStatus(id!, 'ACTIVE'),
         onSuccess: () => {
             setActivateError('');
             queryClient.invalidateQueries({ queryKey: ['website', id] });
             queryClient.invalidateQueries({ queryKey: ['website', id, 'can-activate'] });
+            queryClient.invalidateQueries({ queryKey: ['website', id, 'versions'] });
         },
         onError: (err) => {
             setActivateError(getErrorMessage(err));
-            // Auto-clear error after 5 seconds
             setTimeout(() => setActivateError(''), 5000);
-            // Refresh can-activate status
             queryClient.invalidateQueries({ queryKey: ['website', id, 'can-activate'] });
         }
     });
 
-    if (isLoading) {
+    // Archive (discard) the current draft version
+    const archiveMutation = useMutation({
+        mutationFn: () => {
+            const draftVersion = versions?.find(v => v.status === 'DRAFT');
+            if (!draftVersion) throw new Error('No draft version to archive');
+            return versionApi.archive(draftVersion.id);
+        },
+        onSuccess: () => {
+            setActivateError('');
+            setShowDiscardConfirm(false);
+            queryClient.invalidateQueries({ queryKey: ['website', id] });
+            queryClient.invalidateQueries({ queryKey: ['website', id, 'versions'] });
+        },
+        onError: (err) => {
+            setActivateError(getErrorMessage(err));
+            setShowDiscardConfirm(false);
+            setTimeout(() => setActivateError(''), 5000);
+        }
+    });
+
+    if (isLoading || isLoadingVersions) {
         return (
             <div className="flex justify-center items-center h-screen">
                 <Loader2 className="animate-spin text-primary" size={32} />
@@ -74,10 +132,10 @@ export function WebsiteDetailPage() {
         );
     }
 
-    if (!website) {
+    if (!website || !workingVersion) {
         return (
             <div className="container py-8">
-                <div className="alert alert-error">Website not found</div>
+                <div className="alert alert-error">{!website ? 'Website not found' : 'No version found'}</div>
                 <button
                     className="btn btn-ghost mt-4"
                     onClick={() => navigate('/websites')}
@@ -105,9 +163,10 @@ export function WebsiteDetailPage() {
                     padding: '16px 0',
                     marginTop: '16px',
                     marginBottom: '20px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto 1fr',
+                    alignItems: 'center',
+                    gap: '16px'
                 }}>
                     {/* Left: Site Info */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -128,25 +187,216 @@ export function WebsiteDetailPage() {
                                     <CheckCircle size={10} />
                                     {website.status === 'ACTIVE' ? 'Active' : website.status}
                                 </span>
+                                {/* Version Dropdown */}
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setShowVersionHistory(!showVersionHistory)}
+                                        style={{
+                                            fontSize: '10px',
+                                            color: '#6b7280',
+                                            background: '#f3f4f6',
+                                            padding: '3px 8px',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        v{workingVersion.versionNumber}
+                                        <ChevronDown size={10} style={{ transform: showVersionHistory ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                                    </button>
+                                    {showVersionHistory && (
+                                        <>
+                                            {/* Backdrop */}
+                                            <div
+                                                onClick={() => setShowVersionHistory(false)}
+                                                style={{
+                                                    position: 'fixed',
+                                                    top: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    zIndex: 99
+                                                }}
+                                            />
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    marginTop: '8px',
+                                                    background: '#fff',
+                                                    borderRadius: '12px',
+                                                    boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                                                    border: '1px solid #e5e7eb',
+                                                    minWidth: '280px',
+                                                    zIndex: 100,
+                                                    overflow: 'hidden'
+                                                }}
+                                            >
+                                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <History size={14} color="#6b7280" />
+                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>Version History</span>
+                                                </div>
+                                                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                    {versions?.map((v) => (
+                                                        <div
+                                                            key={v.id}
+                                                            style={{
+                                                                padding: '12px 16px',
+                                                                borderBottom: '1px solid #f3f4f6',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                background: v.id === workingVersion.id ? '#f0f9ff' : 'transparent',
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>
+                                                                    v{v.versionNumber}
+                                                                </span>
+                                                                <span style={{
+                                                                    fontSize: '9px',
+                                                                    fontWeight: 600,
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '8px',
+                                                                    background: v.status === 'ACTIVE' ? '#dcfce7' : v.status === 'DRAFT' ? '#fef3c7' : '#f3f4f6',
+                                                                    color: v.status === 'ACTIVE' ? '#166534' : v.status === 'DRAFT' ? '#92400e' : '#6b7280',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '3px'
+                                                                }}>
+                                                                    {v.status === 'ACTIVE' && <CheckCircle size={8} />}
+                                                                    {v.status === 'DRAFT' && <Edit size={8} />}
+                                                                    {v.status === 'ARCHIVED' && <Archive size={8} />}
+                                                                    {v.status}
+                                                                </span>
+                                                            </div>
+                                                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                                                {new Date(v.createdAt).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>
-                                ID: {website.id.slice(0, 8)}
+                                ID: {website.id.slice(0, 8)} • Version: {workingVersion.status}
                             </div>
                         </div>
                     </div>
 
+                    {/* Center: Action Buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                        {/* Show Activate and Discard buttons if a draft version exists */}
+                        {hasDraftVersion && (
+                            <>
+                                <button
+                                    disabled={!canActivate?.canActivate || activateMutation.isPending}
+                                    onClick={() => activateMutation.mutate()}
+                                    title={!canActivate?.canActivate ? canActivate?.reasons.join('\n') : 'Activate Consent Management'}
+                                    style={{
+                                        background: '#667eea',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '8px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: canActivate?.canActivate ? 'pointer' : 'not-allowed',
+                                        opacity: canActivate?.canActivate ? 1 : 0.6,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    {activateMutation.isPending ? (
+                                        <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                                    ) : (
+                                        <Play size={14} />
+                                    )}
+                                    Activate Version
+                                </button>
+                                <button
+                                    disabled={archiveMutation.isPending}
+                                    onClick={() => setShowDiscardConfirm(true)}
+                                    title="Discard this draft version"
+                                    style={{
+                                        background: '#fef2f2',
+                                        color: '#dc2626',
+                                        border: '1px solid #fecaca',
+                                        borderRadius: '8px',
+                                        padding: '8px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    <Trash2 size={14} />
+                                    Discard Draft
+                                </button>
+                            </>
+                        )}
+
+                        {/* Show Create New Version button if website is ACTIVE and no draft exists */}
+                        {website.status === 'ACTIVE' && !hasDraftVersion && (
+                            <button
+                                disabled={createVersionMutation.isPending}
+                                onClick={() => createVersionMutation.mutate()}
+                                style={{
+                                    background: '#f3f4f6',
+                                    color: '#374151',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '8px',
+                                    padding: '8px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    flexShrink: 0
+                                }}
+                            >
+                                {createVersionMutation.isPending ? (
+                                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                                ) : (
+                                    <Plus size={14} />
+                                )}
+                                Create New Version
+                            </button>
+                        )}
+                    </div>
+
                     {/* Right: Changes Live Indicator */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
-                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: '#166534' }}>Changes are live</span>
-                            {lastSaved && (
-                                <span style={{ fontSize: '10px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                    <Clock size={10} />
-                                    {lastSaved.toLocaleTimeString()}
-                                </span>
-                            )}
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                        {website.status === 'ACTIVE' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#166534' }}>Changes are live</span>
+                                {lastSaved && (
+                                    <span style={{ fontSize: '10px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                        <Clock size={10} />
+                                        {lastSaved.toLocaleTimeString()}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fffbeb', padding: '4px 10px', borderRadius: '20px', border: '1px solid #fcd34d' }}>
+                                <Edit size={10} className="text-amber-700" />
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#b45309' }}>Editing Draft</span>
+                            </div>
+                        )}
                         <a
                             href={`http://localhost:3001/runtime/websites/${website.id}`}
                             target="_blank"
@@ -157,36 +407,6 @@ export function WebsiteDetailPage() {
                         </a>
                     </div>
                 </div>
-
-                {website.status === 'DRAFT' && (
-                    <button
-                        disabled={!canActivate?.canActivate || activateMutation.isPending}
-                        onClick={() => activateMutation.mutate()}
-                        title={!canActivate?.canActivate ? canActivate?.reasons.join('\n') : 'Activate Consent Management'}
-                        style={{
-                            background: '#667eea',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '10px 20px',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            cursor: canActivate?.canActivate ? 'pointer' : 'not-allowed',
-                            opacity: canActivate?.canActivate ? 1 : 0.6,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            flexShrink: 0
-                        }}
-                    >
-                        {activateMutation.isPending ? (
-                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                            <Play size={14} />
-                        )}
-                        Activate
-                    </button>
-                )}
             </div>
 
             {activateError && (
@@ -287,13 +507,26 @@ export function WebsiteDetailPage() {
 
                 {/* Content Area */}
                 <div className="detail-content">
-                    {activeTab === 'notice' && <NoticeTab websiteId={website.id} onSave={handleSave} />}
-                    {activeTab === 'purposes' && <PurposesTab websiteId={website.id} onSave={handleSave} />}
-                    {activeTab === 'banner' && <BannerTab websiteId={website.id} onSave={handleSave} />}
-                    {activeTab === 'translations' && <TranslationsTab websiteId={website.id} onSave={handleSave} />}
+                    {activeTab === 'notice' && <NoticeTab versionId={workingVersion.id} onSave={handleSave} />}
+                    {activeTab === 'purposes' && <PurposesTab versionId={workingVersion.id} onSave={handleSave} />}
+                    {activeTab === 'banner' && <BannerTab versionId={workingVersion.id} onSave={handleSave} />}
+                    {activeTab === 'translations' && <TranslationsTab versionId={workingVersion.id} websiteId={website.id} onSave={handleSave} />}
                     {activeTab === 'install' && <InstallTab website={website} />}
                 </div>
             </div>
+
+            {/* Discard Draft Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDiscardConfirm}
+                title="Discard Draft Version?"
+                message="This will permanently archive your draft changes. The current active version will remain unchanged. This action cannot be undone."
+                confirmText="Discard Draft"
+                cancelText="Keep Draft"
+                onConfirm={() => archiveMutation.mutate()}
+                onCancel={() => setShowDiscardConfirm(false)}
+                isLoading={archiveMutation.isPending}
+                variant="danger"
+            />
         </div>
     );
 }

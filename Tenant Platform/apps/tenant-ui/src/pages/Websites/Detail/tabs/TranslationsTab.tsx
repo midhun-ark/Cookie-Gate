@@ -20,7 +20,7 @@ interface BannerTranslation {
     preferencesButtonText: string;
 }
 
-export function TranslationsTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
+export function TranslationsTab({ versionId, websiteId, onSave }: { versionId: string; websiteId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
     const [success, setSuccess] = useState<TranslationResult | null>(null);
@@ -34,8 +34,8 @@ export function TranslationsTab({ websiteId, onSave }: { websiteId: string; onSa
     });
 
     const { data: bannerTranslations = [] } = useQuery({
-        queryKey: ['bannerTranslations', websiteId],
-        queryFn: () => bannerApi.getTranslations(websiteId)
+        queryKey: ['bannerTranslations', versionId],
+        queryFn: () => bannerApi.getTranslations(versionId)
     });
 
     // Fetch website data for domain
@@ -46,20 +46,20 @@ export function TranslationsTab({ websiteId, onSave }: { websiteId: string; onSa
 
     // Fetch notice data for Settings Panel Preview
     const { data: notice } = useQuery({
-        queryKey: ['notice', websiteId],
-        queryFn: () => noticeApi.get(websiteId)
+        queryKey: ['notice', versionId],
+        queryFn: () => noticeApi.get(versionId)
     });
 
     // Fetch purposes data for Settings Panel Preview
     const { data: purposes = [] } = useQuery({
-        queryKey: ['purposes', websiteId],
-        queryFn: () => purposeApi.list(websiteId)
+        queryKey: ['purposes', versionId],
+        queryFn: () => purposeApi.list(versionId)
     });
 
     // Fetch banner config for colors
     const { data: bannerConfig } = useQuery({
-        queryKey: ['banner', websiteId],
-        queryFn: () => bannerApi.get(websiteId)
+        queryKey: ['banner', versionId],
+        queryFn: () => bannerApi.get(versionId)
     });
 
     // Select all languages by default when languages are loaded
@@ -81,9 +81,9 @@ export function TranslationsTab({ websiteId, onSave }: { websiteId: string; onSa
         onSuccess: (data) => {
             setSuccess(data);
             setError('');
-            queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
-            queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] });
-            queryClient.invalidateQueries({ queryKey: ['bannerTranslations', websiteId] });
+            queryClient.invalidateQueries({ queryKey: ['notice', versionId] });
+            queryClient.invalidateQueries({ queryKey: ['purposes', versionId] });
+            queryClient.invalidateQueries({ queryKey: ['bannerTranslations', versionId] });
             onSave?.();
         },
         onError: (err: any) => {
