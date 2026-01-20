@@ -7,14 +7,18 @@ import { BannerCustomization } from '../types';
 export interface RuntimeNoticeTranslation {
     title: string;
     description: string;
-    policyUrl?: string;
+    policyLink?: string;
+    dpoEmail?: string;
+    userRights?: string;
+    withdrawalInstructions?: string;
+    complaintInstructions?: string;
 }
 
 export interface RuntimePurpose {
     key: string;
     required: boolean;
     displayOrder: number;
-    labels: Record<string, { title: string; description: string }>;
+    labels: Record<string, { title: string; description: string; dataCategoryInfo?: string }>;
 }
 
 export interface RuntimeBannerConfig {
@@ -125,12 +129,20 @@ export const runtimeService = {
             title: string;
             description: string;
             policyUrl?: string;
+            dpoEmail?: string;
+            rightsDescription?: string;
+            withdrawalInstruction?: string;
+            complaintInstruction?: string;
         }>(
             `SELECT 
                 wnt.language_code as "languageCode",
                 wnt.title,
                 wnt.description,
-                wnt.policy_url as "policyUrl"
+                wnt.policy_url as "policyUrl",
+                wn.dpo_email as "dpoEmail",
+                wnt.rights_description as "rightsDescription",
+                wnt.withdrawal_instruction as "withdrawalInstruction",
+                wnt.complaint_instruction as "complaintInstruction"
             FROM website_notices wn
             JOIN website_notice_translations wnt ON wn.id = wnt.website_notice_id
             WHERE wn.website_id = $1`,
@@ -146,7 +158,11 @@ export const runtimeService = {
             translations[row.languageCode] = {
                 title: row.title,
                 description: row.description,
-                policyUrl: row.policyUrl,
+                policyLink: row.policyUrl, // Map to policyLink
+                dpoEmail: row.dpoEmail,
+                userRights: row.rightsDescription,
+                withdrawalInstructions: row.withdrawalInstruction,
+                complaintInstructions: row.complaintInstruction,
             };
         }
 
@@ -183,21 +199,24 @@ export const runtimeService = {
                 languageCode: string;
                 name: string;
                 description: string;
+                dataCategoryInfo?: string;
             }>(
                 `SELECT 
                     language_code as "languageCode",
                     name,
-                    description
+                    description,
+                    data_category_info as "dataCategoryInfo"
                 FROM purpose_translations
                 WHERE purpose_id = $1`,
                 [purpose.id]
             );
 
-            const labels: Record<string, { title: string; description: string }> = {};
+            const labels: Record<string, { title: string; description: string; dataCategoryInfo?: string }> = {};
             for (const t of translationsResult.rows) {
                 labels[t.languageCode] = {
                     title: t.name,
                     description: t.description,
+                    dataCategoryInfo: t.dataCategoryInfo,
                 };
             }
 
@@ -345,23 +364,9 @@ export const runtimeService = {
         purposes: RuntimePurpose[]
     ): string[] {
         // Start with languages that have notice translations
-        const noticeLanguages = new Set(Object.keys(notice));
-
-        // A language is fully supported only if ALL essential purposes have translations
-        const essentialPurposes = purposes.filter(p => p.required);
-
-        const supportedLanguages: string[] = [];
-
-        for (const lang of noticeLanguages) {
-            // Check if all essential purposes have this language
-            const allEssentialHaveLang = essentialPurposes.every(
-                p => p.labels[lang] !== undefined
-            );
-
-            if (allEssentialHaveLang) {
-                supportedLanguages.push(lang);
-            }
-        }
+        // We relax the strict requirement that ALL essential purposes must be translated.
+        // The frontend will fallback to English for missing purpose translations.
+        const supportedLanguages = Object.keys(notice);
 
         // English MUST always be included
         if (!supportedLanguages.includes('en')) {

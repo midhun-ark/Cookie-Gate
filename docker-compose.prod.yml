@@ -40,22 +40,6 @@ services:
     networks:
       - complyark-network
 
-  tenant-migrate:
-    build:
-      context: ./Tenant Platform/apps/server
-      target: builder
-    container_name: complyark-tenant-migrate
-    command: npm run migrate:up
-    environment:
-      DATABASE_URL: postgres://${DB_USER:-ark}:${DB_PASSWORD:-arkpass}@postgres:5432/${DB_NAME:-ark_db}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      admin-migrate:
-        condition: service_completed_successfully
-    networks:
-      - complyark-network
-
   # ============================================
   # BACKEND SERVERS
   # ============================================
@@ -101,7 +85,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       CORS_ORIGINS: ${TENANT_CORS_ORIGINS:-http://localhost:8081}
     depends_on:
-      tenant-migrate:
+      admin-migrate:
         condition: service_completed_successfully
     networks:
       - complyark-network
@@ -148,3 +132,20 @@ volumes:
 networks:
   complyark-network:
     driver: bridge
+    #   tenant-migrate:
+    # build:
+    #   context: ./Tenant Platform/apps/server
+    #   target: builder
+    # container_name: complyark-tenant-migrate
+    # command: npm run migrate:up
+    # environment:
+    #   DATABASE_URL: postgres://${DB_USER:-ark}:${DB_PASSWORD:-arkpass}@postgres:5432/${DB_NAME:-ark_db}
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+    #   admin-migrate:
+    #     condition: service_completed_successfully
+    # networks:
+    #   - complyark-network
+
+

@@ -6,7 +6,7 @@ export function InstallTab({ website }: { website: Website }) {
     const [copied, setCopied] = useState<string | null>(null);
 
     const SCRIPT_URL = import.meta.env.VITE_LOADER_URL ||
-        (import.meta.env.DEV ? 'http://localhost:3001/public/loader.js' : 'https://cdn.complyark.com/loader.js');
+        (import.meta.env.DEV ? 'http://localhost:3001/public/loader.js' : `${import.meta.env.VITE_API_URL}/public/loader.js`);
 
     // Simple, correct loader snippet
     const loaderSnippet = `<script src="${SCRIPT_URL}?id=${website.id}"></script>`;

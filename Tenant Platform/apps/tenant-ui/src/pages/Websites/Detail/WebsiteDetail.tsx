@@ -29,7 +29,7 @@ export function WebsiteDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<TabId>('purposes');
+    const [activeTab, setActiveTab] = useState<TabId>('banner');
     const [activateError, setActivateError] = useState('');
 
     const { data: website, isLoading } = useQuery({
@@ -47,10 +47,16 @@ export function WebsiteDetailPage() {
     const activateMutation = useMutation({
         mutationFn: () => websiteApi.updateStatus(id!, 'ACTIVE'),
         onSuccess: () => {
+            setActivateError('');
             queryClient.invalidateQueries({ queryKey: ['website', id] });
+            queryClient.invalidateQueries({ queryKey: ['website', id, 'can-activate'] });
         },
         onError: (err) => {
             setActivateError(getErrorMessage(err));
+            // Auto-clear error after 5 seconds
+            setTimeout(() => setActivateError(''), 5000);
+            // Refresh can-activate status
+            queryClient.invalidateQueries({ queryKey: ['website', id, 'can-activate'] });
         }
     });
 
@@ -77,9 +83,9 @@ export function WebsiteDetailPage() {
     }
 
     const tabs = [
-        { id: 'purposes', label: 'Purposes', icon: List },
-        { id: 'notice', label: 'Notice', icon: FileText },
         { id: 'banner', label: 'Banner', icon: Layout },
+        { id: 'notice', label: 'Notice', icon: FileText },
+        { id: 'purposes', label: 'Consent', icon: List },
         { id: 'translations', label: 'Translations', icon: Languages },
         { id: 'install', label: 'Install', icon: Code },
     ];
@@ -87,63 +93,61 @@ export function WebsiteDetailPage() {
     return (
         <div className="website-detail-page">
             <div className="container">
-                {/* Header */}
+                {/* Header - Minimalist & Modern */}
                 <div style={{
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: '16px',
-                    padding: '24px 28px',
-                    marginTop: '24px',
-                    marginBottom: '24px',
+                    borderRadius: '12px',
+                    padding: '16px 20px',
+                    marginTop: '16px',
+                    marginBottom: '20px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.25)'
+                    boxShadow: '0 2px 12px rgba(102, 126, 234, 0.2)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <button
                             onClick={() => navigate('/websites')}
                             style={{
-                                background: 'rgba(255, 255, 255, 0.15)',
+                                background: 'rgba(255, 255, 255, 0.12)',
                                 border: 'none',
-                                borderRadius: '12px',
-                                padding: '12px',
+                                borderRadius: '8px',
+                                padding: '8px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                backdropFilter: 'blur(4px)'
+                                justifyContent: 'center'
                             }}
                         >
-                            <ArrowLeft size={20} style={{ color: '#fff' }} />
+                            <ArrowLeft size={16} style={{ color: '#fff' }} />
                         </button>
                         <div style={{
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            padding: '14px',
-                            borderRadius: '14px',
-                            backdropFilter: 'blur(8px)'
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            padding: '10px',
+                            borderRadius: '10px'
                         }}>
-                            <Globe size={28} style={{ color: '#fff' }} />
+                            <Globe size={20} style={{ color: '#fff' }} />
                         </div>
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#fff', margin: 0 }}>{website.domain}</h1>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#fff', margin: 0 }}>{website.domain}</h1>
                                 <span style={{
                                     background: website.status === 'ACTIVE' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 191, 36, 0.9)',
                                     color: '#fff',
-                                    fontSize: '12px',
+                                    fontSize: '10px',
                                     fontWeight: 600,
-                                    padding: '4px 12px',
-                                    borderRadius: '20px',
+                                    padding: '3px 8px',
+                                    borderRadius: '12px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '3px'
                                 }}>
-                                    <CheckCircle size={12} />
+                                    <CheckCircle size={10} />
                                     {website.status === 'ACTIVE' ? 'Active' : website.status}
                                 </span>
                             </div>
-                            <div style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '6px' }}>
-                                Website ID: {website.id.slice(0, 8)}
+                            <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '3px' }}>
+                                ID: {website.id.slice(0, 8)}
                             </div>
                         </div>
                     </div>
@@ -188,16 +192,70 @@ export function WebsiteDetailPage() {
 
                 {/* Validation Warnings */}
                 {website.status === 'DRAFT' && canActivate && !canActivate.canActivate && (
-                    <div className="alert alert-warning mb-6">
-                        <div className="font-semibold mb-1 flex items-center gap-2">
-                            <AlertTriangle size={16} />
-                            Setup incomplete
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%)',
+                        border: '1px solid rgba(251, 191, 36, 0.35)',
+                        borderRadius: '14px',
+                        padding: '16px 20px',
+                        marginBottom: '24px',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '16px',
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: '0 2px 12px rgba(251, 191, 36, 0.1)'
+                    }}>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            borderRadius: '10px',
+                            padding: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+                        }}>
+                            <AlertTriangle size={20} style={{ color: '#fff' }} />
                         </div>
-                        <ul className="list-disc list-inside text-sm">
-                            {canActivate.reasons.map((reason, i) => (
-                                <li key={i}>{reason}</li>
-                            ))}
-                        </ul>
+                        <div style={{ flex: 1 }}>
+                            <div style={{
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                color: '#b45309',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                Setup Incomplete
+                            </div>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px'
+                            }}>
+                                {canActivate.reasons.map((reason, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            fontSize: '13px',
+                                            color: '#92400e',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <span style={{
+                                            width: '5px',
+                                            height: '5px',
+                                            borderRadius: '50%',
+                                            background: '#d97706',
+                                            flexShrink: 0
+                                        }} />
+                                        {reason}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
 

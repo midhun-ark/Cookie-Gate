@@ -26,9 +26,8 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Copy compiled code and migrations
+# Copy compiled code
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/migrations ./migrations
 
 # Set environment
 ENV NODE_ENV=production
