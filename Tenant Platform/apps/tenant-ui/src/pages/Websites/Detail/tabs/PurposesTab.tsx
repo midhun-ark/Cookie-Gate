@@ -11,7 +11,7 @@ interface Translation {
     description: string;
 }
 
-export function PurposesTab({ websiteId }: { websiteId: string }) {
+export function PurposesTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -153,7 +153,7 @@ export function PurposesTab({ websiteId }: { websiteId: string }) {
                             purpose={purposes?.find((p) => p.id === editingId)}
                             key={editingId || 'new'}
                             onCancel={handleCloseModal}
-                            onSuccess={() => { handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); }}
+                            onSuccess={() => { handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] }); onSave?.(); }}
                         />
                     </div>
                 </div>

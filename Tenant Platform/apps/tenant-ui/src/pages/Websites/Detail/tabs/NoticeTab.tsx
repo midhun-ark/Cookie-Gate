@@ -5,7 +5,7 @@ import { noticeApi } from '@/api';
 import { useLanguages } from '@/hooks';
 import { getErrorMessage } from '@/api/client';
 
-export function NoticeTab({ websiteId }: { websiteId: string }) {
+export function NoticeTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [selectedLang, setSelectedLang] = useState('en');
     const [dpoEmail, setDpoEmail] = useState('');
@@ -86,6 +86,7 @@ export function NoticeTab({ websiteId }: { websiteId: string }) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
             setSaveSuccess(true);
+            onSave?.();
             setTimeout(() => setSaveSuccess(false), 3000);
         },
         onError: (err) => setError(getErrorMessage(err)),

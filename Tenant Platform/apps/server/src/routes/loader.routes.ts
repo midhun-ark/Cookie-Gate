@@ -708,16 +708,23 @@ export async function loaderRoutes(app: FastifyInstance) {
                         '</div>' +
                         '<div style="background: rgba(0,0,0,0.03); border-radius: 8px; padding: 0.75rem;">' +
                             '<div style="font-size: 0.85em; line-height: 1.4; margin-bottom: 0.5rem;">' + userRights + '</div>' +
-                            (dpoEmail ? '<button onclick="window.open(\\'mailto:' + escapeHtml(dpoEmail) + '\\', \\'_blank\\')" style="' +
-                                'background: transparent; border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; ' +
-                                'padding: 0.4rem 0.8rem; font-size: 0.8em; cursor: pointer; width: 100%;">' +
-                                'Exercise Your Rights</button>' : '') +
                         '</div>' +
                     '</div>';
             }
             
             noticeSectionsHtml += '</div>';
         }
+
+        // Always show Exercise Your Rights button
+        var rightsButtonHtml = 
+            '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.08);">' +
+                '<button id="complyark-rights-btn" style="' +
+                    'background: transparent; border: 1px solid ' + banner.primaryColor + '; border-radius: 8px; ' +
+                    'padding: 0.6rem 1rem; font-size: 0.9em; cursor: pointer; width: 100%; ' +
+                    'color: ' + banner.primaryColor + '; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">' +
+                    '<span>⚖️</span> Exercise Your Rights' +
+                '</button>' +
+            '</div>';
 
         // Withdrawal & Complaint cards (cream/beige design as per reference)
         var instructionsHtml = '';
@@ -788,6 +795,7 @@ export async function loaderRoutes(app: FastifyInstance) {
                     purposesHtml +
                     noticeSectionsHtml +
                     instructionsHtml +
+                    rightsButtonHtml +
                 '</div>' +
                 
                 // Footer
@@ -808,6 +816,298 @@ export async function loaderRoutes(app: FastifyInstance) {
             '</div>';
 
         return overlay;
+    }
+
+    // ============================================================================
+    // UI RENDERING - EXERCISE YOUR RIGHTS FORM
+    // ============================================================================
+
+    function createRightsForm() {
+        var config = state.config;
+        var banner = config.banner;
+        var notice = getNoticeTranslation(config.notice, state.resolvedLanguage);
+        var dpoEmail = notice && notice.dpoEmail ? notice.dpoEmail : '';
+
+        var overlay = document.createElement('div');
+        overlay.id = 'complyark-rights-form';
+        overlay.style.cssText = 
+            'position: fixed; top: 0; left: 0; right: 0; bottom: 0; ' +
+            'background: rgba(0,0,0,0.6); display: flex; ' +
+            'align-items: center; justify-content: center; z-index: 1000001; ' +
+            'font-family: ' + (banner.fontFamily || 'system-ui, -apple-system, sans-serif') + '; ' +
+            'backdrop-filter: blur(4px);';
+
+        // Input styles based on banner colors
+        var inputStyle = 'width: 100%; padding: 0.6rem 0.8rem; font-size: 0.9em; ' +
+            'border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; outline: none; ' +
+            'box-sizing: border-box; background: ' + banner.backgroundColor + '; ' +
+            'color: ' + banner.textColor + ';';
+
+        var labelStyle = 'display: block; font-size: 0.85em; font-weight: 500; ' +
+            'color: ' + banner.textColor + '; margin-bottom: 0.4rem; margin-top: 0.8rem;';
+
+        var tileStyle = 'border: 1px solid rgba(0,0,0,0.15); padding: 0.8rem; border-radius: 6px; ' +
+            'cursor: pointer; background: rgba(0,0,0,0.02); text-align: center; font-size: 0.85em; ' +
+            'transition: all 0.2s; color: ' + banner.textColor + ';';
+
+        var tileSelectedStyle = tileStyle + ' border-color: ' + banner.acceptButtonColor + '; ' +
+            'background: rgba(' + hexToRgb(banner.acceptButtonColor) + ', 0.1);';
+
+        overlay.innerHTML = 
+            '<div style="background: ' + banner.backgroundColor + '; color: ' + banner.textColor + '; ' +
+                'border-radius: 16px; max-width: 640px; width: 92%; max-height: 85vh; overflow-y: auto; ' +
+                'box-shadow: 0 25px 80px rgba(0,0,0,0.25);">' +
+                
+                // Header
+                '<div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08);">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                        '<div style="display: flex; align-items: center; gap: 0.6rem;">' +
+                            '<span style="font-size: 1.4em;">⚖️</span>' +
+                            '<h2 style="margin: 0; font-weight: 600; font-size: 1.2em;">Exercise Your Data Protection Rights</h2>' +
+                        '</div>' +
+                        '<button id="complyark-rights-close" style="' +
+                            'background: none; border: none; cursor: pointer; font-size: 1.6em; ' +
+                            'color: ' + banner.textColor + '; opacity: 0.5; line-height: 1; padding: 0;">&times;</button>' +
+                    '</div>' +
+                    '<p style="margin: 0.5rem 0 0 0; line-height: 1.5; opacity: 0.8; font-size: 0.9em;">' +
+                        'Use this form to access, correct, erase your personal data, nominate a person, or raise a grievance.</p>' +
+                '</div>' +
+                
+                // Form Content
+                '<div style="padding: 1.25rem 1.5rem;" id="complyark-rights-content">' +
+                    
+                    // Step 1: Request Type
+                    '<div id="complyark-step1">' +
+                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">1. SELECT REQUEST TYPE</div>' +
+                        '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem;" id="complyark-request-types">' +
+                            '<div class="rights-tile" data-type="Access" style="' + tileStyle + '">📋 Access My Data</div>' +
+                            '<div class="rights-tile" data-type="Correction" style="' + tileStyle + '">✏️ Correct My Data</div>' +
+                            '<div class="rights-tile" data-type="Erasure" style="' + tileStyle + '">🗑️ Erase My Data</div>' +
+                            '<div class="rights-tile" data-type="Nomination" style="' + tileStyle + '">👤 Nominate a Person</div>' +
+                            '<div class="rights-tile" data-type="Grievance" style="' + tileStyle + '">📢 Raise a Grievance</div>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    // Step 2: Your Details (hidden initially)
+                    '<div id="complyark-step2" style="display: none; margin-top: 1.5rem;">' +
+                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">2. YOUR DETAILS</div>' +
+                        '<label style="' + labelStyle + '">Email Address *</label>' +
+                        '<input type="email" id="complyark-rights-email" style="' + inputStyle + '" required />' +
+                        '<label style="' + labelStyle + '">Confirm Email Address *</label>' +
+                        '<input type="email" id="complyark-rights-email-confirm" style="' + inputStyle + '" required />' +
+                        '<label style="' + labelStyle + '">Short Description *</label>' +
+                        '<textarea id="complyark-rights-description" style="' + inputStyle + ' min-height: 60px; resize: vertical;"></textarea>' +
+                    '</div>' +
+                    
+                    // Step 3: Request Details (hidden initially, content changes based on type)
+                    '<div id="complyark-step3" style="display: none; margin-top: 1.5rem;">' +
+                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">3. REQUEST DETAILS</div>' +
+                        '<div id="complyark-details-content"></div>' +
+                    '</div>' +
+                    
+                    // Step 4: Review & Submit (hidden initially)
+                    '<div id="complyark-step4" style="display: none; margin-top: 1.5rem;">' +
+                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">REVIEW & SUBMIT</div>' +
+                        '<div style="background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 8px;">' +
+                            '<p style="margin: 0 0 0.5rem 0; font-size: 0.9em;"><strong>Request Type:</strong> <span id="complyark-review-type"></span></p>' +
+                            '<p style="margin: 0 0 0.5rem 0; font-size: 0.9em;"><strong>Email:</strong> <span id="complyark-review-email"></span></p>' +
+                            '<p style="margin: 0; font-size: 0.9em;"><strong>Description:</strong> <span id="complyark-review-desc"></span></p>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    // Confirmation (hidden initially)
+                    '<div id="complyark-confirmation" style="display: none; text-align: center; padding: 2rem 0;">' +
+                        '<div style="font-size: 3em; margin-bottom: 1rem;">✅</div>' +
+                        '<h3 style="margin: 0 0 0.5rem 0; font-weight: 600;">Request Submitted</h3>' +
+                        '<p style="margin: 0; opacity: 0.8; font-size: 0.9em;">Your request has been registered successfully.</p>' +
+                        '<p style="margin: 0.5rem 0; font-size: 0.9em;"><strong>Request ID:</strong> <span id="complyark-request-id"></span></p>' +
+                        '<p style="margin: 0; opacity: 0.8; font-size: 0.9em;">We will contact you via email with updates.</p>' +
+                    '</div>' +
+                    
+                '</div>' +
+                
+                // Footer
+                '<div id="complyark-rights-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: flex-end; gap: 0.75rem;">' +
+                    '<button id="complyark-rights-submit" style="' +
+                        'padding: 0.65rem 1.5rem; border-radius: 8px; border: none; ' +
+                        'background: ' + banner.acceptButtonColor + '; color: white; ' +
+                        'cursor: pointer; font-weight: 600; opacity: 0.5;" disabled>Submit Request</button>' +
+                '</div>' +
+            '</div>';
+
+        return overlay;
+    }
+
+    function hexToRgb(hex) {
+        var result = /^#?([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2})$/i.exec(hex);
+        return result ? 
+            parseInt(result[1], 16) + ',' + parseInt(result[2], 16) + ',' + parseInt(result[3], 16) :
+            '0,0,0';
+    }
+
+    var rightsFormState = {
+        selectedType: '',
+        element: null
+    };
+
+    function showRightsForm() {
+        if (rightsFormState.element) {
+            document.body.removeChild(rightsFormState.element);
+        }
+
+        var form = createRightsForm();
+        if (!form) return;
+
+        rightsFormState.element = form;
+        rightsFormState.selectedType = '';
+        document.body.appendChild(form);
+
+        var banner = state.config.banner;
+
+        // Close button
+        document.getElementById('complyark-rights-close').onclick = hideRightsForm;
+
+        // Request type tiles
+        var tiles = form.querySelectorAll('.rights-tile');
+        for (var i = 0; i < tiles.length; i++) {
+            (function(tile) {
+                tile.onclick = function() {
+                    // Deselect all
+                    for (var j = 0; j < tiles.length; j++) {
+                        tiles[j].style.borderColor = 'rgba(0,0,0,0.15)';
+                        tiles[j].style.background = 'rgba(0,0,0,0.02)';
+                    }
+                    // Select this one
+                    tile.style.borderColor = banner.acceptButtonColor;
+                    tile.style.background = 'rgba(' + hexToRgb(banner.acceptButtonColor) + ', 0.1)';
+                    
+                    rightsFormState.selectedType = tile.getAttribute('data-type');
+                    
+                    // Show step 2
+                    document.getElementById('complyark-step2').style.display = 'block';
+                    
+                    // Show step 3 with appropriate content
+                    renderRightsDetails(rightsFormState.selectedType);
+                    
+                    // Show step 4
+                    document.getElementById('complyark-step4').style.display = 'block';
+                    
+                    // Enable submit button
+                    document.getElementById('complyark-rights-submit').disabled = false;
+                    document.getElementById('complyark-rights-submit').style.opacity = '1';
+                };
+            })(tiles[i]);
+        }
+
+        // Submit button
+        document.getElementById('complyark-rights-submit').onclick = submitRightsRequest;
+
+        console.log('[ComplyArk] Rights form displayed');
+    }
+
+    function renderRightsDetails(type) {
+        var banner = state.config.banner;
+        var inputStyle = 'width: 100%; padding: 0.6rem 0.8rem; font-size: 0.9em; ' +
+            'border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; outline: none; ' +
+            'box-sizing: border-box; background: ' + banner.backgroundColor + '; ' +
+            'color: ' + banner.textColor + ';';
+        var labelStyle = 'display: block; font-size: 0.85em; font-weight: 500; ' +
+            'color: ' + banner.textColor + '; margin-bottom: 0.4rem; margin-top: 0.8rem;';
+        var checkboxStyle = 'display: flex; align-items: center; gap: 0.5rem; font-size: 0.9em; margin-top: 0.6rem;';
+
+        var html = '';
+        var step3 = document.getElementById('complyark-step3');
+
+        if (type === 'Access') {
+            // No additional details needed for Access
+            step3.style.display = 'none';
+        } else if (type === 'Correction') {
+            html = '<label style="' + labelStyle + '">Incorrect Data *</label>' +
+                '<textarea id="complyark-incorrect-data" style="' + inputStyle + ' min-height: 50px; resize: vertical;"></textarea>' +
+                '<label style="' + labelStyle + '">Correct Data *</label>' +
+                '<textarea id="complyark-correct-data" style="' + inputStyle + ' min-height: 50px; resize: vertical;"></textarea>';
+            step3.style.display = 'block';
+        } else if (type === 'Erasure') {
+            html = '<label style="' + labelStyle + '">Reason (Optional)</label>' +
+                '<select id="complyark-erasure-reason" style="' + inputStyle + '">' +
+                    '<option>Consent withdrawn</option>' +
+                    '<option>No longer required</option>' +
+                    '<option>Other</option>' +
+                '</select>' +
+                '<div style="' + checkboxStyle + '">' +
+                    '<input type="checkbox" id="complyark-erasure-ack" />' +
+                    '<label for="complyark-erasure-ack" style="margin: 0;">I understand some data may be retained as required by law</label>' +
+                '</div>';
+            step3.style.display = 'block';
+        } else if (type === 'Nomination') {
+            html = '<label style="' + labelStyle + '">Nominee Name *</label>' +
+                '<input type="text" id="complyark-nominee-name" style="' + inputStyle + '" />' +
+                '<label style="' + labelStyle + '">Nominee Email *</label>' +
+                '<input type="email" id="complyark-nominee-email" style="' + inputStyle + '" />';
+            step3.style.display = 'block';
+        } else if (type === 'Grievance') {
+            html = '<label style="' + labelStyle + '">Grievance Category *</label>' +
+                '<select id="complyark-grievance-category" style="' + inputStyle + '">' +
+                    '<option>Delay in response</option>' +
+                    '<option>Improper handling</option>' +
+                    '<option>Consent issue</option>' +
+                '</select>' +
+                '<label style="' + labelStyle + '">Details *</label>' +
+                '<textarea id="complyark-grievance-details" style="' + inputStyle + ' min-height: 60px; resize: vertical;"></textarea>';
+            step3.style.display = 'block';
+        }
+
+        document.getElementById('complyark-details-content').innerHTML = html;
+    }
+
+    function submitRightsRequest() {
+        var email = document.getElementById('complyark-rights-email').value;
+        var confirmEmail = document.getElementById('complyark-rights-email-confirm').value;
+        var description = document.getElementById('complyark-rights-description').value;
+
+        // Basic validation
+        if (!email || !confirmEmail || !description) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        if (email !== confirmEmail) {
+            alert('Email addresses do not match.');
+            return;
+        }
+
+        // Update review section
+        document.getElementById('complyark-review-type').innerText = rightsFormState.selectedType;
+        document.getElementById('complyark-review-email').innerText = email;
+        document.getElementById('complyark-review-desc').innerText = description;
+
+        // Generate request ID
+        var requestId = 'DSR-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        document.getElementById('complyark-request-id').innerText = requestId;
+
+        // Hide form steps and show confirmation
+        document.getElementById('complyark-step1').style.display = 'none';
+        document.getElementById('complyark-step2').style.display = 'none';
+        document.getElementById('complyark-step3').style.display = 'none';
+        document.getElementById('complyark-step4').style.display = 'none';
+        document.getElementById('complyark-confirmation').style.display = 'block';
+        document.getElementById('complyark-rights-footer').style.display = 'none';
+
+        console.log('[ComplyArk] Rights request submitted:', {
+            type: rightsFormState.selectedType,
+            email: email,
+            description: description,
+            requestId: requestId
+        });
+
+        // TODO: Send to backend API
+    }
+
+    function hideRightsForm() {
+        if (rightsFormState.element && rightsFormState.element.parentNode) {
+            document.body.removeChild(rightsFormState.element);
+            rightsFormState.element = null;
+        }
     }
 
     function showSettings() {
@@ -834,6 +1134,15 @@ export async function loaderRoutes(app: FastifyInstance) {
         };
 
         document.getElementById('complyark-save-settings').onclick = handleSaveSettings;
+
+        // Exercise Your Rights button
+        var rightsBtn = document.getElementById('complyark-rights-btn');
+        if (rightsBtn) {
+            rightsBtn.onclick = function() {
+                hideSettings();
+                showRightsForm();
+            };
+        }
 
         // Language selector
         var langSelect = document.getElementById('complyark-lang-select');

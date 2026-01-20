@@ -20,7 +20,7 @@ interface BannerTranslation {
     preferencesButtonText: string;
 }
 
-export function TranslationsTab({ websiteId }: { websiteId: string }) {
+export function TranslationsTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
     const [success, setSuccess] = useState<TranslationResult | null>(null);
@@ -84,6 +84,7 @@ export function TranslationsTab({ websiteId }: { websiteId: string }) {
             queryClient.invalidateQueries({ queryKey: ['notice', websiteId] });
             queryClient.invalidateQueries({ queryKey: ['purposes', websiteId] });
             queryClient.invalidateQueries({ queryKey: ['bannerTranslations', websiteId] });
+            onSave?.();
         },
         onError: (err: any) => {
             setError(err.response?.data?.message || err.message || 'Translation failed');
@@ -237,32 +238,48 @@ export function TranslationsTab({ websiteId }: { websiteId: string }) {
                     {bannerConfig?.position === 'center' && <div style={{ height: '20px' }} />}
 
                     {/* Banner/Modal/Popup based on layout and position */}
-                    <div style={{
-                        position: 'absolute',
-                        ...(bannerConfig?.position === 'top' ? { top: '50px' } :
-                            bannerConfig?.position === 'center' ? { top: '50%', transform: 'translateY(-50%)', left: bannerConfig?.layout === 'popup' ? 'auto' : '10px', right: '10px', ...(bannerConfig?.layout === 'popup' ? { width: '280px', right: '10px' } : {}) } :
-                                { bottom: '0' }),
-                        ...(bannerConfig?.position !== 'center' ? { left: '0', right: '0' } : {}),
-                        background: bannerConfig?.backgroundColor || '#fff',
-                        borderRadius: bannerConfig?.layout === 'modal' ? '12px' : bannerConfig?.position === 'bottom' ? '0 0 12px 12px' : '12px 12px 0 0',
-                        padding: '16px 20px',
-                        boxShadow: bannerConfig?.position === 'top' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 -4px 20px rgba(0,0,0,0.15)',
-                        ...(bannerConfig?.layout === 'modal' ? { maxWidth: '400px', margin: '0 auto' } : {})
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <div style={{ fontWeight: 600, fontSize: '14px', color: bannerConfig?.textColor || '#111827' }}>{currentPreviewTranslation.headlineText}</div>
-                            <span style={{ fontSize: '11px', color: bannerConfig?.primaryColor || '#4f46e5', background: (bannerConfig?.primaryColor || '#4f46e5') + '15', padding: '3px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Globe style={{ width: '12px', height: '12px' }} />
-                                {previewLanguages.find((l: SupportedLanguage) => l.code === previewLang)?.name || 'English'}
-                            </span>
-                        </div>
-                        <p style={{ fontSize: '12px', color: bannerConfig?.textColor ? bannerConfig.textColor + 'cc' : '#6b7280', marginBottom: '12px', lineHeight: 1.5 }}>{currentPreviewTranslation.descriptionText}</p>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: bannerConfig?.layout === 'popup' ? 'wrap' : 'nowrap' }}>
-                            <button style={{ flex: bannerConfig?.layout === 'popup' ? '1 1 100%' : 1, padding: '10px 16px', fontSize: '12px', fontWeight: 600, background: bannerConfig?.acceptButtonColor || '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px' }}>{currentPreviewTranslation.acceptButtonText}</button>
-                            <button style={{ flex: bannerConfig?.layout === 'popup' ? '1 1 100%' : 1, padding: '10px 16px', fontSize: '12px', fontWeight: 600, background: bannerConfig?.rejectButtonColor || '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px' }}>{currentPreviewTranslation.rejectButtonText}</button>
-                            <button style={{ flex: bannerConfig?.layout === 'popup' ? '1 1 100%' : 'none', padding: '10px 16px', fontSize: '12px', fontWeight: 500, background: 'transparent', color: bannerConfig?.primaryColor || '#4f46e5', border: '1px solid ' + (bannerConfig?.primaryColor || '#4f46e5'), borderRadius: '6px' }}>{currentPreviewTranslation.preferencesButtonText}</button>
-                        </div>
-                    </div>
+                    {(() => {
+                        const pos = bannerConfig?.position || 'bottom';
+                        const layout = bannerConfig?.layout || 'banner';
+                        const isPopup = layout === 'popup';
+                        const isModal = layout === 'modal';
+                        const isCenter = pos === 'center';
+                        const isTop = pos === 'top';
+
+                        const positionStyles: React.CSSProperties = {
+                            position: 'absolute',
+                            left: isPopup ? 'auto' : (isCenter && isModal ? '50%' : '0'),
+                            right: isPopup ? '10px' : (isCenter && isModal ? 'auto' : '0'),
+                            top: isTop ? '50px' : (isCenter ? '50%' : 'auto'),
+                            bottom: (!isTop && !isCenter) ? '0' : 'auto',
+                            transform: isCenter ? (isModal ? 'translate(-50%, -50%)' : 'translateY(-50%)') : 'none',
+                            width: isPopup ? '260px' : (isCenter && isModal ? '85%' : 'auto'),
+                            maxWidth: isModal ? '360px' : 'none',
+                            background: bannerConfig?.backgroundColor || '#fff',
+                            borderRadius: isModal || isPopup ? '12px' : (isTop ? '0 0 12px 12px' : '12px 12px 0 0'),
+                            padding: '14px 18px',
+                            boxShadow: isTop ? '0 4px 16px rgba(0,0,0,0.12)' : '0 -4px 16px rgba(0,0,0,0.12)',
+                            zIndex: 10
+                        };
+
+                        return (
+                            <div style={positionStyles}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '13px', color: bannerConfig?.textColor || '#111827' }}>{currentPreviewTranslation.headlineText}</div>
+                                    <span style={{ fontSize: '10px', color: bannerConfig?.primaryColor || '#4f46e5', background: (bannerConfig?.primaryColor || '#4f46e5') + '15', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                        <Globe style={{ width: '10px', height: '10px' }} />
+                                        {previewLanguages.find((l: SupportedLanguage) => l.code === previewLang)?.name || 'English'}
+                                    </span>
+                                </div>
+                                <p style={{ fontSize: '11px', color: bannerConfig?.textColor ? bannerConfig.textColor + 'cc' : '#6b7280', marginBottom: '10px', lineHeight: 1.4 }}>{currentPreviewTranslation.descriptionText}</p>
+                                <div style={{ display: 'flex', gap: '6px', flexDirection: isPopup ? 'column' : 'row' }}>
+                                    <button style={{ flex: isPopup ? 'none' : 1, padding: '8px 12px', fontSize: '11px', fontWeight: 600, background: bannerConfig?.acceptButtonColor || '#4f46e5', color: '#fff', border: 'none', borderRadius: '5px' }}>{currentPreviewTranslation.acceptButtonText}</button>
+                                    <button style={{ flex: isPopup ? 'none' : 1, padding: '8px 12px', fontSize: '11px', fontWeight: 600, background: bannerConfig?.rejectButtonColor || '#4f46e5', color: '#fff', border: 'none', borderRadius: '5px' }}>{currentPreviewTranslation.rejectButtonText}</button>
+                                    <button style={{ flex: 'none', padding: '8px 12px', fontSize: '11px', fontWeight: 500, background: 'transparent', color: bannerConfig?.primaryColor || '#4f46e5', border: '1px solid ' + (bannerConfig?.primaryColor || '#4f46e5'), borderRadius: '5px' }}>{currentPreviewTranslation.preferencesButtonText}</button>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '12px', textAlign: 'center' }}>

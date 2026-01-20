@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Exercise Data Protection Rights</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f6f6f6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 24px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin-top: 24px;
+        }
+
+        .container {
+            counter-reset: section;
+        }
+
+        .section:not(#confirmationSection) h2::before {
+            counter-increment: section;
+            content: counter(section) ". ";
+        }
+
+        p {
+            font-size: 14px;
+            color: #444;
+        }
+
+        .section {
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .tile {
+            border: 1px solid #ddd;
+            padding: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .tile.selected {
+            border-color: #1a73e8;
+            background: #eef4ff;
+        }
+
+        label {
+            font-size: 13px;
+            display: block;
+            margin-top: 12px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 80px;
+        }
+
+        .button {
+            margin-top: 20px;
+            padding: 10px 16px;
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .summary {
+            background: #f3f3f3;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Exercise Your Data Protection Rights</h1>
+        <p>
+            Use this form to access, correct, erase your personal data, nominate a person,
+            or raise a grievance.
+        </p>
+
+        <!-- SECTION 1: REQUEST TYPE -->
+        <div class="section">
+            <h2>Select Request Type</h2>
+
+            <div class="grid" id="requestTypes">
+                <div class="tile" onclick="selectType(this, 'Access')">Access My Data</div>
+                <div class="tile" onclick="selectType(this, 'Correction')">Correct My Data</div>
+                <div class="tile" onclick="selectType(this, 'Erasure')">Erase My Data</div>
+                <div class="tile" onclick="selectType(this, 'Nomination')">Nominate a Person</div>
+                <div class="tile" onclick="selectType(this, 'Grievance')">Raise a Grievance</div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: COMMON DETAILS -->
+        <div class="section hidden" id="commonSection">
+            <h2>Your Details</h2>
+
+            <label>Email Address *</label>
+            <input type="email" id="email" required />
+
+            <label>Confirm Email Address *</label>
+            <input type="email" id="confirmEmail" required />
+
+            <label>Short Description *</label>
+            <textarea id="description"></textarea>
+        </div>
+
+        <!-- SECTION 3: CONDITIONAL DETAILS -->
+        <div class="section hidden" id="detailsSection">
+            <h2>Request Details</h2>
+            <div id="detailsContent"></div>
+        </div>
+
+        <!-- SECTION 4: REVIEW -->
+        <div class="section hidden" id="reviewSection">
+            <h2>Review & Submit</h2>
+
+            <div class="summary">
+                <p><strong>Request Type:</strong> <span id="reviewType"></span></p>
+                <p><strong>Email:</strong> <span id="reviewEmail"></span></p>
+                <p><strong>Description:</strong> <span id="reviewDesc"></span></p>
+            </div>
+
+            <button class="button" onclick="submitRequest()">Submit Request</button>
+        </div>
+
+        <!-- SECTION 5: CONFIRMATION -->
+        <div class="section hidden" id="confirmationSection">
+            <h2>Request Submitted</h2>
+            <p>Your request has been registered successfully.</p>
+            <p><strong>Request ID:</strong> DSR-2026-000123</p>
+            <p>We will contact you via email with updates.</p>
+        </div>
+
+    </div>
+
+    <script>
+        let selectedType = "";
+
+        function selectType(el, type) {
+            selectedType = type;
+
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+            el.classList.add('selected');
+
+            document.getElementById('commonSection').classList.remove('hidden');
+            document.getElementById('reviewSection').classList.remove('hidden');
+
+            renderDetails(type);
+        }
+
+        function renderDetails(type) {
+            let html = "";
+            const detailsSection = document.getElementById('detailsSection');
+
+            if (type === "Access") {
+                // No specific details for Access
+            } else if (type === "Correction") {
+                html = `
+        <label>Incorrect Data *</label>
+        <textarea></textarea>
+        <label>Correct Data *</label>
+        <textarea></textarea>
+      `;
+            } else if (type === "Erasure") {
+                html = `
+        <label>Reason (Optional)</label>
+        <select>
+          <option>Consent withdrawn</option>
+          <option>No longer required</option>
+          <option>Other</option>
+        </select>
+        <label>
+          <input type="checkbox">
+          I understand some data may be retained as required by law
+        </label>
+      `;
+            } else if (type === "Nomination") {
+                html = `
+        <label>Nominee Name *</label>
+        <input />
+        <label>Nominee Email *</label>
+        <input />
+      `;
+            } else if (type === "Grievance") {
+                html = `
+        <label>Grievance Category *</label>
+        <select>
+          <option>Delay in response</option>
+          <option>Improper handling</option>
+          <option>Consent issue</option>
+        </select>
+        <label>Details *</label>
+        <textarea></textarea>
+      `;
+            }
+
+            document.getElementById('detailsContent').innerHTML = html;
+
+            if (html.trim() === "") {
+                detailsSection.classList.add('hidden');
+            } else {
+                detailsSection.classList.remove('hidden');
+            }
+        }
+
+        function submitRequest() {
+            document.getElementById('reviewType').innerText = selectedType;
+            document.getElementById('reviewEmail').innerText =
+                document.getElementById('email').value;
+            document.getElementById('reviewDesc').innerText =
+                document.getElementById('description').value;
+
+            document.getElementById('confirmationSection').classList.remove('hidden');
+        }
+    </script>
+
+</body>
+
+</html>

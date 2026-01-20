@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, RotateCcw, Monitor, Smartphone, CheckCircle, AlertCircle, Globe } from 'lucide-react';
+import { Save, RotateCcw, Monitor, Smartphone, Globe } from 'lucide-react';
 import { bannerApi, languageApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
 import type { BannerCustomization, SupportedLanguage } from '@/types';
@@ -37,7 +37,7 @@ const DEFAULT_TRANSLATION: Omit<BannerTranslation, 'languageCode'> = {
     preferencesButtonText: 'Settings',
 };
 
-export function BannerTab({ websiteId }: { websiteId: string }) {
+export function BannerTab({ websiteId, onSave }: { websiteId: string; onSave?: () => void }) {
     const queryClient = useQueryClient();
     const [config, setConfig] = useState<BannerCustomization>(DEFAULT_BANNER);
     const [translations, setTranslations] = useState<BannerTranslation[]>([]);
@@ -45,8 +45,6 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [isDirty, setIsDirty] = useState(false);
     const [isTextDirty, setIsTextDirty] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-    const [error, setError] = useState('');
 
     // Fetch styles
     const { data: serverConfig, isLoading: loadingStyles } = useQuery({
@@ -94,10 +92,9 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['banner', websiteId] });
             setIsDirty(false);
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
+            onSave?.();
         },
-        onError: (err) => setError(getErrorMessage(err)),
+        onError: (err) => console.error(getErrorMessage(err)),
     });
 
     // Save translations mutation
@@ -106,10 +103,9 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bannerTranslations', websiteId] });
             setIsTextDirty(false);
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
+            onSave?.();
         },
-        onError: (err) => setError(getErrorMessage(err)),
+        onError: (err) => console.error(getErrorMessage(err)),
     });
 
     const resetMutation = useMutation({
@@ -120,7 +116,6 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
     const handleStyleChange = (key: keyof BannerCustomization, value: string) => {
         setConfig(prev => ({ ...prev, [key]: value }));
         setIsDirty(true);
-        setSaveSuccess(false);
     };
 
     const handleTextChange = (key: keyof Omit<BannerTranslation, 'languageCode'>, value: string) => {
@@ -135,7 +130,6 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
             }
         });
         setIsTextDirty(true);
-        setSaveSuccess(false);
     };
 
     const getCurrentTranslation = (): BannerTranslation => {
@@ -166,11 +160,7 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
                     <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Banner Settings</h2>
-                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Customize appearance and text for each language.</p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
-                    {saveSuccess && <span style={{ fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle style={{ width: '12px', height: '12px' }} /> Saved</span>}
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Customize appearance and text. Changes apply instantly.</p>
                 </div>
             </div>
 
@@ -317,9 +307,9 @@ export function BannerTab({ websiteId }: { websiteId: string }) {
                                 <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>{currentText.headlineText}</h4>
                                 <p style={{ fontSize: '9px', marginBottom: '10px', opacity: 0.9, lineHeight: 1.4 }}>{currentText.descriptionText}</p>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: config.layout === 'banner' ? 'flex-end' : 'flex-start', flexDirection: config.layout === 'banner' ? 'row' : 'column' }}>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: `1px solid ${config.textColor}`, background: 'transparent', color: config.textColor }}>{currentText.preferencesButtonText}</button>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.rejectButtonColor, color: '#333' }}>{currentText.rejectButtonText}</button>
-                                    <button style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '9px', border: 'none', background: config.acceptButtonColor, color: '#fff' }}>{currentText.acceptButtonText}</button>
+                                    <button style={{ flex: config.layout === 'banner' ? 1 : 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '9px', fontWeight: 600, border: 'none', background: config.acceptButtonColor, color: '#fff' }}>{currentText.acceptButtonText}</button>
+                                    <button style={{ flex: config.layout === 'banner' ? 1 : 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '9px', fontWeight: 600, border: 'none', background: config.rejectButtonColor, color: config.rejectButtonColor === '#f3f4f6' || config.rejectButtonColor === '#ffffff' ? '#333' : '#fff' }}>{currentText.rejectButtonText}</button>
+                                    <button style={{ padding: '6px 12px', borderRadius: '4px', fontSize: '9px', fontWeight: 500, border: `1px solid ${config.primaryColor || config.textColor}`, background: 'transparent', color: config.primaryColor || config.textColor }}>{currentText.preferencesButtonText}</button>
                                 </div>
                             </div>
                         </div>

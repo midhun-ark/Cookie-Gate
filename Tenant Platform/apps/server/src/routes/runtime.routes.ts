@@ -50,7 +50,7 @@ export async function runtimeRoutes(app: FastifyInstance) {
             reply.header('Access-Control-Allow-Origin', '*');
             reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
             reply.header('Access-Control-Allow-Headers', 'Content-Type');
-            reply.header('Cache-Control', 'public, max-age=300'); // 5 minute cache
+            reply.header('Cache-Control', 'public, max-age=60'); // 1 minute cache
 
             return reply.send(config);
         } catch (error) {
