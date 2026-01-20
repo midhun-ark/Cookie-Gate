@@ -187,7 +187,7 @@ export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId
                             {/* Layout */}
                             <div>
                                 <label style={labelStyle}>Layout Style</label>
-                                <select value={config.layout} onChange={(e) => handleStyleChange('layout', e.target.value)} style={inputStyle as any}>
+                                <select value={config.layout} onChange={(e) => handleStyleChange('layout', e.target.value)} disabled={isReadOnly} style={{ ...inputStyle, background: isReadOnly ? '#f9fafb' : '#fff' } as any}>
                                     <option value="banner">Bar (Top/Bottom)</option>
                                     <option value="modal">Center Modal</option>
                                     <option value="popup">Floating Popup</option>
@@ -195,17 +195,17 @@ export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId
                             </div>
                             <div>
                                 <label style={labelStyle}>Position</label>
-                                <select value={config.position} onChange={(e) => handleStyleChange('position', e.target.value)} disabled={config.layout === 'modal'} style={{ ...inputStyle, background: config.layout === 'modal' ? '#f9fafb' : '#fff' } as any}>
+                                <select value={config.position} onChange={(e) => handleStyleChange('position', e.target.value)} disabled={isReadOnly || config.layout === 'modal'} style={{ ...inputStyle, background: (isReadOnly || config.layout === 'modal') ? '#f9fafb' : '#fff' } as any}>
                                     <option value="bottom">Bottom</option>
                                     <option value="top">Top</option>
                                     <option value="center">Center</option>
                                 </select>
                             </div>
                             {/* Colors */}
-                            <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleStyleChange('backgroundColor', v)} />
-                            <ColorInput label="Text Color" value={config.textColor} onChange={(v) => handleStyleChange('textColor', v)} />
-                            <ColorInput label="Primary Button" value={config.acceptButtonColor} onChange={(v) => handleStyleChange('acceptButtonColor', v)} />
-                            <ColorInput label="Secondary Button" value={config.rejectButtonColor} onChange={(v) => handleStyleChange('rejectButtonColor', v)} />
+                            <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleStyleChange('backgroundColor', v)} disabled={isReadOnly} />
+                            <ColorInput label="Text Color" value={config.textColor} onChange={(v) => handleStyleChange('textColor', v)} disabled={isReadOnly} />
+                            <ColorInput label="Primary Button" value={config.acceptButtonColor} onChange={(v) => handleStyleChange('acceptButtonColor', v)} disabled={isReadOnly} />
+                            <ColorInput label="Secondary Button" value={config.rejectButtonColor} onChange={(v) => handleStyleChange('rejectButtonColor', v)} disabled={isReadOnly} />
                         </div>
                         {!isReadOnly && (
                             <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
@@ -243,24 +243,24 @@ export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div>
                                 <label style={labelStyle}>Headline</label>
-                                <input type="text" value={currentText.headlineText} onChange={(e) => handleTextChange('headlineText', e.target.value)} style={inputStyle} />
+                                <input type="text" value={currentText.headlineText} onChange={(e) => handleTextChange('headlineText', e.target.value)} disabled={isReadOnly} style={{ ...inputStyle, background: isReadOnly ? '#f9fafb' : '#fff' }} />
                             </div>
                             <div>
                                 <label style={labelStyle}>Description</label>
-                                <textarea value={currentText.descriptionText} onChange={(e) => handleTextChange('descriptionText', e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                                <textarea value={currentText.descriptionText} onChange={(e) => handleTextChange('descriptionText', e.target.value)} rows={2} disabled={isReadOnly} style={{ ...inputStyle, resize: 'vertical', background: isReadOnly ? '#f9fafb' : '#fff' }} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                 <div>
                                     <label style={labelStyle}>Accept Button</label>
-                                    <input type="text" value={currentText.acceptButtonText} onChange={(e) => handleTextChange('acceptButtonText', e.target.value)} style={inputStyle} />
+                                    <input type="text" value={currentText.acceptButtonText} onChange={(e) => handleTextChange('acceptButtonText', e.target.value)} disabled={isReadOnly} style={{ ...inputStyle, background: isReadOnly ? '#f9fafb' : '#fff' }} />
                                 </div>
                                 <div>
                                     <label style={labelStyle}>Reject Button</label>
-                                    <input type="text" value={currentText.rejectButtonText} onChange={(e) => handleTextChange('rejectButtonText', e.target.value)} style={inputStyle} />
+                                    <input type="text" value={currentText.rejectButtonText} onChange={(e) => handleTextChange('rejectButtonText', e.target.value)} disabled={isReadOnly} style={{ ...inputStyle, background: isReadOnly ? '#f9fafb' : '#fff' }} />
                                 </div>
                                 <div>
                                     <label style={labelStyle}>Settings Button</label>
-                                    <input type="text" value={currentText.preferencesButtonText} onChange={(e) => handleTextChange('preferencesButtonText', e.target.value)} style={inputStyle} />
+                                    <input type="text" value={currentText.preferencesButtonText} onChange={(e) => handleTextChange('preferencesButtonText', e.target.value)} disabled={isReadOnly} style={{ ...inputStyle, background: isReadOnly ? '#f9fafb' : '#fff' }} />
                                 </div>
                             </div>
                         </div>
@@ -331,16 +331,16 @@ export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId
     );
 }
 
-function ColorInput({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) {
+function ColorInput({ label, value, onChange, disabled = false }: { label: string, value: string, onChange: (v: string) => void, disabled?: boolean }) {
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151' }}>{label}</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', padding: '4px', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: disabled ? '#f9fafb' : '#fff', padding: '4px', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                 <div style={{ position: 'relative' }}>
-                    <input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '24px', height: '20px' }} />
+                    <input type="color" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: disabled ? 'not-allowed' : 'pointer', width: '24px', height: '20px' }} />
                     <div style={{ width: '24px', height: '20px', borderRadius: '4px', border: '1px solid #e5e7eb', background: value }}></div>
                 </div>
-                <input type="text" value={value} onChange={(e) => onChange(e.target.value)} maxLength={7} style={{ width: '60px', fontSize: '10px', fontFamily: 'monospace', textTransform: 'uppercase', border: 'none', outline: 'none', color: '#6b7280', background: 'transparent' }} />
+                <input type="text" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} maxLength={7} style={{ width: '60px', fontSize: '10px', fontFamily: 'monospace', textTransform: 'uppercase', border: 'none', outline: 'none', color: '#6b7280', background: 'transparent' }} />
             </div>
         </div>
     );

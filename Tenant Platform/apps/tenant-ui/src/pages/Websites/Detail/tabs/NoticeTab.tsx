@@ -164,7 +164,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                     value={dpoEmail}
                                     onChange={e => { setDpoEmail(e.target.value); if (error) setError(''); }}
                                     placeholder="privacy@yourcompany.com"
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: `1px solid ${!isEmailValid ? '#fca5a5' : '#d1d5db'}`, borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: `1px solid ${!isEmailValid ? '#fca5a5' : '#d1d5db'}`, borderRadius: '6px', outline: 'none', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                                 {!isEmailValid && (
                                     <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -191,7 +192,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                     value={currentData.title}
                                     onChange={(e) => handleInputChange('title', e.target.value)}
                                     placeholder="Privacy Notice"
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                             </div>
                             <div>
@@ -200,7 +202,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                     value={currentData.description}
                                     onChange={(e) => handleInputChange('description', e.target.value)}
                                     placeholder="We use cookies to improve your experience..."
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '80px', resize: 'vertical', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '80px', resize: 'vertical', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                             </div>
                             <div>
@@ -212,7 +215,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                         value={currentData.policyUrl?.replace(/^https?:\/\//, '') || ''}
                                         onChange={(e) => handleInputChange('policyUrl', 'https://' + e.target.value.replace(/^https?:\/\//, ''))}
                                         placeholder="example.com/privacy"
-                                        style={{ flex: 1, padding: '8px 12px', fontSize: '13px', border: 'none', outline: 'none', boxSizing: 'border-box' }}
+                                        disabled={isReadOnly}
+                                        style={{ flex: 1, padding: '8px 12px', fontSize: '13px', border: 'none', outline: 'none', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                     />
                                 </div>
                             </div>
@@ -237,7 +241,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                 <textarea
                                     value={currentData.rightsDescription}
                                     onChange={(e) => handleInputChange('rightsDescription', e.target.value)}
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                             </div>
                             <div>
@@ -245,7 +250,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                 <textarea
                                     value={currentData.withdrawalInstruction}
                                     onChange={(e) => handleInputChange('withdrawalInstruction', e.target.value)}
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                             </div>
                             <div>
@@ -253,7 +259,8 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                                 <textarea
                                     value={currentData.complaintInstruction}
                                     onChange={(e) => handleInputChange('complaintInstruction', e.target.value)}
-                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box' }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', minHeight: '70px', resize: 'vertical', boxSizing: 'border-box', background: isReadOnly ? '#f9fafb' : '#fff' }}
                                 />
                             </div>
                         </div>
