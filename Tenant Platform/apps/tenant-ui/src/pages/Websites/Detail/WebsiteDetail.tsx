@@ -90,7 +90,12 @@ export function WebsiteDetailPage() {
     });
 
     const activateMutation = useMutation({
-        mutationFn: () => websiteApi.updateStatus(id!, 'ACTIVE'),
+        mutationFn: () => {
+            // Find the draft version to activate
+            const draftVersion = versions?.find(v => v.status === 'DRAFT');
+            if (!draftVersion) throw new Error('No draft version to activate');
+            return versionApi.activate(id!, draftVersion.id);
+        },
         onSuccess: () => {
             setActivateError('');
             queryClient.invalidateQueries({ queryKey: ['website', id] });
@@ -194,10 +199,10 @@ export function WebsiteDetailPage() {
                                         style={{
                                             fontSize: '10px',
                                             color: '#6b7280',
-                                            background: '#f3f4f6',
+                                            background: workingVersion.status === 'DRAFT' ? '#fef3c7' : '#f3f4f6',
                                             padding: '3px 8px',
                                             borderRadius: '12px',
-                                            border: 'none',
+                                            border: workingVersion.status === 'DRAFT' ? '1px solid #fcd34d' : 'none',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -205,6 +210,14 @@ export function WebsiteDetailPage() {
                                         }}
                                     >
                                         v{workingVersion.versionNumber}
+                                        <span style={{
+                                            fontSize: '8px',
+                                            fontWeight: 600,
+                                            color: workingVersion.status === 'DRAFT' ? '#92400e' : '#166534',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            {workingVersion.status}
+                                        </span>
                                         <ChevronDown size={10} style={{ transform: showVersionHistory ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                     </button>
                                     {showVersionHistory && (
@@ -286,7 +299,7 @@ export function WebsiteDetailPage() {
                                 </div>
                             </div>
                             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>
-                                ID: {website.id.slice(0, 8)} • Version: {workingVersion.status}
+                                ID: {website.id.slice(0, 8)} • {hasDraftVersion ? 'Editing Draft' : workingVersion.status}
                             </div>
                         </div>
                     </div>
@@ -380,6 +393,33 @@ export function WebsiteDetailPage() {
 
                     {/* Right: Changes Live Indicator */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                        {/* Small Create Version Button - Disabled when draft exists */}
+                        <button
+                            disabled={createVersionMutation.isPending || hasDraftVersion}
+                            onClick={() => createVersionMutation.mutate()}
+                            title={hasDraftVersion ? "Activate or discard current draft first" : "Create a new draft version"}
+                            style={{
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '20px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: hasDraftVersion ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                opacity: (createVersionMutation.isPending || hasDraftVersion) ? 0.4 : 1
+                            }}
+                        >
+                            {createVersionMutation.isPending ? (
+                                <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <Plus size={10} />
+                            )}
+                            Create Version
+                        </button>
                         {website.status === 'ACTIVE' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
@@ -409,81 +449,85 @@ export function WebsiteDetailPage() {
                 </div>
             </div>
 
-            {activateError && (
-                <div className="alert alert-error mb-6">
-                    <AlertTriangle size={18} />
-                    {activateError}
-                </div>
-            )}
+            {
+                activateError && (
+                    <div className="alert alert-error mb-6">
+                        <AlertTriangle size={18} />
+                        {activateError}
+                    </div>
+                )
+            }
 
             {/* Validation Warnings */}
-            {website.status === 'DRAFT' && canActivate && !canActivate.canActivate && (
-                <div style={{
-                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%)',
-                    border: '1px solid rgba(251, 191, 36, 0.35)',
-                    borderRadius: '14px',
-                    padding: '16px 20px',
-                    marginBottom: '24px',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '16px',
-                    backdropFilter: 'blur(8px)',
-                    boxShadow: '0 2px 12px rgba(251, 191, 36, 0.1)'
-                }}>
+            {
+                website.status === 'DRAFT' && canActivate && !canActivate.canActivate && (
                     <div style={{
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                        borderRadius: '10px',
-                        padding: '10px',
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%)',
+                        border: '1px solid rgba(251, 191, 36, 0.35)',
+                        borderRadius: '14px',
+                        padding: '16px 20px',
+                        marginBottom: '24px',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+                        alignItems: 'flex-start',
+                        gap: '16px',
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: '0 2px 12px rgba(251, 191, 36, 0.1)'
                     }}>
-                        <AlertTriangle size={20} style={{ color: '#fff' }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
                         <div style={{
-                            fontSize: '15px',
-                            fontWeight: 600,
-                            color: '#b45309',
-                            marginBottom: '8px',
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            borderRadius: '10px',
+                            padding: '10px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px'
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
                         }}>
-                            Setup Incomplete
+                            <AlertTriangle size={20} style={{ color: '#fff' }} />
                         </div>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '6px'
-                        }}>
-                            {canActivate.reasons.map((reason, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        fontSize: '13px',
-                                        color: '#92400e',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px'
-                                    }}
-                                >
-                                    <span style={{
-                                        width: '5px',
-                                        height: '5px',
-                                        borderRadius: '50%',
-                                        background: '#d97706',
-                                        flexShrink: 0
-                                    }} />
-                                    {reason}
-                                </div>
-                            ))}
+                        <div style={{ flex: 1 }}>
+                            <div style={{
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                color: '#b45309',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                Setup Incomplete
+                            </div>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px'
+                            }}>
+                                {canActivate.reasons.map((reason, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            fontSize: '13px',
+                                            color: '#92400e',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <span style={{
+                                            width: '5px',
+                                            height: '5px',
+                                            borderRadius: '50%',
+                                            background: '#d97706',
+                                            flexShrink: 0
+                                        }} />
+                                        {reason}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <div className="detail-layout">
                 {/* Sidebar Tabs */}
@@ -507,10 +551,10 @@ export function WebsiteDetailPage() {
 
                 {/* Content Area */}
                 <div className="detail-content">
-                    {activeTab === 'notice' && <NoticeTab versionId={workingVersion.id} onSave={handleSave} />}
-                    {activeTab === 'purposes' && <PurposesTab versionId={workingVersion.id} onSave={handleSave} />}
-                    {activeTab === 'banner' && <BannerTab versionId={workingVersion.id} onSave={handleSave} />}
-                    {activeTab === 'translations' && <TranslationsTab versionId={workingVersion.id} websiteId={website.id} onSave={handleSave} />}
+                    {activeTab === 'notice' && <NoticeTab versionId={workingVersion.id} onSave={handleSave} isReadOnly={workingVersion.status !== 'DRAFT'} />}
+                    {activeTab === 'purposes' && <PurposesTab versionId={workingVersion.id} onSave={handleSave} isReadOnly={workingVersion.status !== 'DRAFT'} />}
+                    {activeTab === 'banner' && <BannerTab versionId={workingVersion.id} onSave={handleSave} isReadOnly={workingVersion.status !== 'DRAFT'} />}
+                    {activeTab === 'translations' && <TranslationsTab versionId={workingVersion.id} websiteId={website.id} onSave={handleSave} isReadOnly={workingVersion.status !== 'DRAFT'} />}
                     {activeTab === 'install' && <InstallTab website={website} />}
                 </div>
             </div>
@@ -527,6 +571,6 @@ export function WebsiteDetailPage() {
                 isLoading={archiveMutation.isPending}
                 variant="danger"
             />
-        </div>
+        </div >
     );
 }

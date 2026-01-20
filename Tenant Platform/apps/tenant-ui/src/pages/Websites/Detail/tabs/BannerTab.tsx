@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, RotateCcw, Monitor, Smartphone, Globe } from 'lucide-react';
+import { Save, RotateCcw, Monitor, Smartphone, Globe, Lock } from 'lucide-react';
 import { bannerApi, languageApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
 import type { BannerCustomization, SupportedLanguage } from '@/types';
@@ -37,7 +37,7 @@ const DEFAULT_TRANSLATION: Omit<BannerTranslation, 'languageCode'> = {
     preferencesButtonText: 'Settings',
 };
 
-export function BannerTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
+export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId: string; onSave?: () => void; isReadOnly?: boolean }) {
     const queryClient = useQueryClient();
     const [config, setConfig] = useState<BannerCustomization>(DEFAULT_BANNER);
     const [translations, setTranslations] = useState<BannerTranslation[]>([]);
@@ -164,6 +164,13 @@ export function BannerTab({ versionId, onSave }: { versionId: string; onSave?: (
                 </div>
             </div>
 
+            {isReadOnly && (
+                <div style={{ marginBottom: '16px', padding: '10px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Lock style={{ width: '14px', height: '14px', color: '#6b7280' }} />
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>View Only - Create a new version to make changes</span>
+                </div>
+            )}
+
             {/* Two Column Layout */}
             <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '20px' }}>
 
@@ -200,11 +207,13 @@ export function BannerTab({ versionId, onSave }: { versionId: string; onSave?: (
                             <ColorInput label="Primary Button" value={config.acceptButtonColor} onChange={(v) => handleStyleChange('acceptButtonColor', v)} />
                             <ColorInput label="Secondary Button" value={config.rejectButtonColor} onChange={(v) => handleStyleChange('rejectButtonColor', v)} />
                         </div>
-                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button onClick={() => saveStyleMutation.mutate()} disabled={!isDirty || saveStyleMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isDirty || saveStyleMutation.isPending ? 0.6 : 1 }}>
-                                <Save style={{ width: '12px', height: '12px' }} /> Save Styles
-                            </button>
-                        </div>
+                        {!isReadOnly && (
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => saveStyleMutation.mutate()} disabled={!isDirty || saveStyleMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isDirty || saveStyleMutation.isPending ? 0.6 : 1 }}>
+                                    <Save style={{ width: '12px', height: '12px' }} /> Save Styles
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ borderTop: '1px solid #e5e7eb', marginBottom: '20px' }}></div>
@@ -256,14 +265,16 @@ export function BannerTab({ versionId, onSave }: { versionId: string; onSave?: (
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <button onClick={() => { if (confirm('Reset styles to default?')) resetMutation.mutate(); }} style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <RotateCcw style={{ width: '12px', height: '12px' }} /> Reset Styles
-                            </button>
-                            <button onClick={() => saveTranslationMutation.mutate()} disabled={!isTextDirty || saveTranslationMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isTextDirty || saveTranslationMutation.isPending ? 0.6 : 1 }}>
-                                <Save style={{ width: '12px', height: '12px' }} /> Save Text
-                            </button>
-                        </div>
+                        {!isReadOnly && (
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <button onClick={() => { if (confirm('Reset styles to default?')) resetMutation.mutate(); }} style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <RotateCcw style={{ width: '12px', height: '12px' }} /> Reset Styles
+                                </button>
+                                <button onClick={() => saveTranslationMutation.mutate()} disabled={!isTextDirty || saveTranslationMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: !isTextDirty || saveTranslationMutation.isPending ? 0.6 : 1 }}>
+                                    <Save style={{ width: '12px', height: '12px' }} /> Save Text
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 

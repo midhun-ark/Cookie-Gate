@@ -211,14 +211,14 @@ export const versionService = {
     },
 
     /**
-     * Archive a draft version (discard without activating)
+     * Delete a draft version (discard without activating)
      */
-    async archiveVersion(
+    async deleteVersion(
         versionId: string,
         tenantId: string,
         actorId: string,
         requestInfo: { ipAddress?: string; userAgent?: string }
-    ): Promise<WebsiteVersion> {
+    ): Promise<void> {
         // Verify ownership
         const version = await versionRepository.findByIdAndTenant(versionId, tenantId);
         if (!version) {
@@ -226,20 +226,17 @@ export const versionService = {
         }
 
         if (version.status !== 'DRAFT') {
-            throw new Error('Only draft versions can be archived');
+            throw new Error('Only draft versions can be deleted');
         }
 
-        // Archive the draft
-        const archivedVersion = await versionRepository.updateStatus(versionId, 'ARCHIVED');
-        if (!archivedVersion) {
-            throw new Error('Failed to archive version');
-        }
+        // Delete the draft version and all its data
+        await versionRepository.delete(versionId);
 
         // Audit log
         await auditRepository.create(
             tenantId,
             actorId,
-            'VERSION_ARCHIVED',
+            'VERSION_DELETED',
             {
                 resourceType: 'website_version',
                 resourceId: versionId,
@@ -251,7 +248,5 @@ export const versionService = {
                 userAgent: requestInfo.userAgent,
             }
         );
-
-        return archivedVersion;
     },
 };

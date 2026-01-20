@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2, GripVertical, AlertCircle, Plus, X, Globe } from 'lucide-react';
+import { Trash2, GripVertical, AlertCircle, Plus, X, Globe, Lock } from 'lucide-react';
 import { purposeApi, languageApi } from '@/api';
 import { getErrorMessage } from '@/api/client';
 import type { Purpose, SupportedLanguage } from '@/types';
@@ -11,7 +11,7 @@ interface Translation {
     description: string;
 }
 
-export function PurposesTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
+export function PurposesTab({ versionId, onSave, isReadOnly = false }: { versionId: string; onSave?: () => void; isReadOnly?: boolean }) {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,12 +59,18 @@ export function PurposesTab({ versionId, onSave }: { versionId: string; onSave?:
                             ))}
                         </select>
                     </div>
-                    <button
-                        onClick={() => { setEditingId(null); setIsModalOpen(true); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
-                    >
-                        <Plus style={{ width: '14px', height: '14px' }} /> Add Purpose
-                    </button>
+                    {isReadOnly ? (
+                        <span style={{ fontSize: '12px', color: '#6b7280', background: '#f3f4f6', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Lock style={{ width: '12px', height: '12px' }} /> View Only
+                        </span>
+                    ) : (
+                        <button
+                            onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '13px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
+                        >
+                            <Plus style={{ width: '14px', height: '14px' }} /> Add Purpose
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -108,20 +114,22 @@ export function PurposesTab({ versionId, onSave }: { versionId: string; onSave?:
                                         </p>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                    <button
-                                        onClick={() => handleEdit(purpose.id)}
-                                        style={{ padding: '6px 10px', fontSize: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#374151' }}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => { if (confirm('Delete this purpose?')) deleteMutation.mutate(purpose.id); }}
-                                        style={{ padding: '6px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', color: '#dc2626' }}
-                                    >
-                                        <Trash2 style={{ width: '14px', height: '14px' }} />
-                                    </button>
-                                </div>
+                                {!isReadOnly && (
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button
+                                            onClick={() => handleEdit(purpose.id)}
+                                            style={{ padding: '6px 10px', fontSize: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#374151' }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => { if (confirm('Delete this purpose?')) deleteMutation.mutate(purpose.id); }}
+                                            style={{ padding: '6px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', color: '#dc2626' }}
+                                        >
+                                            <Trash2 style={{ width: '14px', height: '14px' }} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         );
                     })

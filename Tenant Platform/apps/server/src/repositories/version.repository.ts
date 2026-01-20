@@ -318,4 +318,55 @@ export const versionRepository = {
         // Return the draft version - user must activate manually
         return version;
     },
+
+    /**
+     * Delete a version and all its related data
+     * Only draft versions can be deleted
+     */
+    async delete(id: string, client?: PoolClient): Promise<void> {
+        const queryFn = client ? client.query.bind(client) : query;
+
+        // Delete related data first (due to foreign key constraints)
+        // Delete banner translations
+        await queryFn(
+            `DELETE FROM website_banner_translations WHERE website_version_id = $1`,
+            [id]
+        );
+
+        // Delete banner customization
+        await queryFn(
+            `DELETE FROM banner_customizations WHERE website_version_id = $1`,
+            [id]
+        );
+
+        // Delete purpose translations (via purpose_id)
+        await queryFn(
+            `DELETE FROM purpose_translations WHERE purpose_id IN (SELECT id FROM purposes WHERE website_version_id = $1)`,
+            [id]
+        );
+
+        // Delete purposes
+        await queryFn(
+            `DELETE FROM purposes WHERE website_version_id = $1`,
+            [id]
+        );
+
+        // Delete notice translations (via notice_id)
+        await queryFn(
+            `DELETE FROM website_notice_translations WHERE website_notice_id IN (SELECT id FROM website_notices WHERE website_version_id = $1)`,
+            [id]
+        );
+
+        // Delete notice
+        await queryFn(
+            `DELETE FROM website_notices WHERE website_version_id = $1`,
+            [id]
+        );
+
+        // Finally delete the version
+        await queryFn(
+            `DELETE FROM website_versions WHERE id = $1`,
+            [id]
+        );
+    },
 };

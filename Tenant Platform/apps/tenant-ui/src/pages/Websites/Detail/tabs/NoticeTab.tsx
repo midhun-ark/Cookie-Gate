@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, AlertCircle, CheckCircle, Globe, Building2, FileText, Shield } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Globe, Building2, FileText, Shield, Lock } from 'lucide-react';
 import { noticeApi } from '@/api';
 import { useLanguages } from '@/hooks';
 import { getErrorMessage } from '@/api/client';
 
-export function NoticeTab({ versionId, onSave }: { versionId: string; onSave?: () => void }) {
+export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId: string; onSave?: () => void; isReadOnly?: boolean }) {
     const queryClient = useQueryClient();
     const [selectedLang, setSelectedLang] = useState('en');
     const [dpoEmail, setDpoEmail] = useState('');
@@ -261,15 +261,23 @@ export function NoticeTab({ versionId, onSave }: { versionId: string; onSave?: (
 
                     {/* SAVE BUTTON and Messages */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-                        {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
-                        {saveSuccess && <span style={{ fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle style={{ width: '12px', height: '12px' }} /> Saved</span>}
-                        <button
-                            onClick={() => saveMutation.mutate()}
-                            disabled={saveMutation.isPending || !isFormValid}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 24px', fontSize: '13px', fontWeight: 600, background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: saveMutation.isPending || !isFormValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
-                        >
-                            <Save style={{ width: '14px', height: '14px' }} /> Save Changes
-                        </button>
+                        {isReadOnly ? (
+                            <span style={{ fontSize: '12px', color: '#6b7280', background: '#f3f4f6', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Lock style={{ width: '12px', height: '12px' }} /> View Only - Create a new version to edit
+                            </span>
+                        ) : (
+                            <>
+                                {error && <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle style={{ width: '12px', height: '12px' }} /> {error}</span>}
+                                {saveSuccess && <span style={{ fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle style={{ width: '12px', height: '12px' }} /> Saved</span>}
+                                <button
+                                    onClick={() => saveMutation.mutate()}
+                                    disabled={saveMutation.isPending || !isFormValid}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 24px', fontSize: '13px', fontWeight: 600, background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: saveMutation.isPending || !isFormValid ? 0.6 : 1, boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)' }}
+                                >
+                                    <Save style={{ width: '14px', height: '14px' }} /> Save Changes
+                                </button>
+                            </>
+                        )}
                     </div>
 
                 </div>

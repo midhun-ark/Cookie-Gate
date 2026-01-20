@@ -121,8 +121,8 @@ export const versionApi = {
         return response.data.data!;
     },
 
-    activate: async (websiteId: string, versionId: string): Promise<WebsiteVersion> => {
-        const response = await api.post<ApiResponse<WebsiteVersion>>(`/websites/${websiteId}/versions/${versionId}/activate`);
+    activate: async (_websiteId: string, versionId: string): Promise<WebsiteVersion> => {
+        const response = await api.post<ApiResponse<WebsiteVersion>>(`/versions/${versionId}/activate`);
         return response.data.data!;
     },
 

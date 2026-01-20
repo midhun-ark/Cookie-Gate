@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Languages, CheckCircle, AlertCircle, Loader2, Globe, Sparkles, ChevronDown, Eye, Monitor } from 'lucide-react';
+import { Languages, CheckCircle, AlertCircle, Loader2, Globe, Sparkles, ChevronDown, Eye, Monitor, Lock } from 'lucide-react';
 import { languageApi, bannerApi, noticeApi, purposeApi, websiteApi } from '@/api';
 import { api } from '@/api/client';
 import type { SupportedLanguage, Purpose } from '@/types';
@@ -20,7 +20,7 @@ interface BannerTranslation {
     preferencesButtonText: string;
 }
 
-export function TranslationsTab({ versionId, websiteId, onSave }: { versionId: string; websiteId: string; onSave?: () => void }) {
+export function TranslationsTab({ versionId, websiteId, onSave, isReadOnly = false }: { versionId: string; websiteId: string; onSave?: () => void; isReadOnly?: boolean }) {
     const queryClient = useQueryClient();
     const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
     const [success, setSuccess] = useState<TranslationResult | null>(null);
@@ -177,9 +177,15 @@ export function TranslationsTab({ versionId, websiteId, onSave }: { versionId: s
 
                 <div style={{ padding: '16px 20px', borderTop: '1px solid #f3f4f6', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: '#6b7280' }}>{selectedLangs.length} language{selectedLangs.length !== 1 ? 's' : ''} selected</span>
-                    <button onClick={() => translateMutation.mutate()} disabled={selectedLangs.length === 0 || translateMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: selectedLangs.length === 0 || translateMutation.isPending ? 0.6 : 1, boxShadow: '0 2px 4px rgba(79, 70, 229, 0.3)' }}>
-                        {translateMutation.isPending ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} />Translating...</> : <><Sparkles style={{ width: '16px', height: '16px' }} />Generate Translations</>}
-                    </button>
+                    {isReadOnly ? (
+                        <span style={{ fontSize: '12px', color: '#6b7280', background: '#f3f4f6', padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Lock style={{ width: '14px', height: '14px' }} /> View Only - Create a new version to edit
+                        </span>
+                    ) : (
+                        <button onClick={() => translateMutation.mutate()} disabled={selectedLangs.length === 0 || translateMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: selectedLangs.length === 0 || translateMutation.isPending ? 0.6 : 1, boxShadow: '0 2px 4px rgba(79, 70, 229, 0.3)' }}>
+                            {translateMutation.isPending ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} />Translating...</> : <><Sparkles style={{ width: '16px', height: '16px' }} />Generate Translations</>}
+                        </button>
+                    )}
                 </div>
             </div>
 

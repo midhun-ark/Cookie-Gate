@@ -168,7 +168,7 @@ export async function versionRoutes(app: FastifyInstance): Promise<void> {
 
     /**
      * POST /tenant/versions/:versionId/archive
-     * Archive a draft version (discard without activating)
+     * Delete a draft version (discard without activating)
      */
     app.post<{ Params: { versionId: string } }>(
         '/versions/:versionId/archive',
@@ -177,7 +177,7 @@ export async function versionRoutes(app: FastifyInstance): Promise<void> {
             const { userId, tenantId } = getCurrentUser(request);
             const requestInfo = getRequestInfo(request);
 
-            const version = await versionService.archiveVersion(
+            await versionService.deleteVersion(
                 versionId,
                 tenantId,
                 userId,
@@ -186,8 +186,7 @@ export async function versionRoutes(app: FastifyInstance): Promise<void> {
 
             return {
                 success: true,
-                data: version,
-                message: 'Draft version archived successfully',
+                message: 'Draft version deleted successfully',
             };
         }
     );
