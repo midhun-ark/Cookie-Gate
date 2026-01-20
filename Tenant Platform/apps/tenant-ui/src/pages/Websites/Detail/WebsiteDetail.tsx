@@ -393,33 +393,6 @@ export function WebsiteDetailPage() {
 
                     {/* Right: Changes Live Indicator */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
-                        {/* Small Create Version Button - Disabled when draft exists */}
-                        <button
-                            disabled={createVersionMutation.isPending || hasDraftVersion}
-                            onClick={() => createVersionMutation.mutate()}
-                            title={hasDraftVersion ? "Activate or discard current draft first" : "Create a new draft version"}
-                            style={{
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '20px',
-                                padding: '4px 10px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: hasDraftVersion ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                opacity: (createVersionMutation.isPending || hasDraftVersion) ? 0.4 : 1
-                            }}
-                        >
-                            {createVersionMutation.isPending ? (
-                                <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
-                            ) : (
-                                <Plus size={10} />
-                            )}
-                            Create Version
-                        </button>
                         {website.status === 'ACTIVE' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>

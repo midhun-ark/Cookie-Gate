@@ -67,14 +67,17 @@ export const runtimeService = {
      * Only ACTIVE websites should be returned.
      */
     async getWebsiteConfig(siteId: string): Promise<RuntimeWebsiteConfig | null> {
-        // 1. Verify website exists and is ACTIVE
-        const websiteResult = await query<{ id: string; domain: string; status: string }>(
-            `SELECT id, domain, status FROM websites WHERE id = $1`,
+        // 1. Verify website exists and has an ACTIVE version
+        const websiteResult = await query<{ id: string; domain: string; status: string; versionId: string }>(
+            `SELECT w.id, w.domain, w.status, wv.id as "versionId"
+             FROM websites w
+             JOIN website_versions wv ON w.id = wv.website_id AND wv.status = 'ACTIVE'
+             WHERE w.id = $1`,
             [siteId]
         );
 
         if (websiteResult.rows.length === 0) {
-            console.warn(`[Runtime] Website not found: ${siteId}`);
+            console.warn(`[Runtime] Website not found or no active version: ${siteId}`);
             return null;
         }
 
@@ -84,8 +87,11 @@ export const runtimeService = {
             return null;
         }
 
-        // 2. Get notice with all translations
-        const notice = await this.getNoticeTranslations(siteId);
+        const activeVersionId = website.versionId;
+        console.log(`[Runtime] Using active version ${activeVersionId} for website ${siteId}`);
+
+        // 2. Get notice with all translations (from active version)
+        const notice = await this.getNoticeTranslations(activeVersionId);
 
         // CRITICAL: English translation MUST exist for fail-safe behavior
         if (!notice || !notice['en']) {
@@ -93,8 +99,8 @@ export const runtimeService = {
             return null;
         }
 
-        // 3. Get purposes with translations
-        const purposes = await this.getPurposesWithTranslations(siteId);
+        // 3. Get purposes with translations (from active version)
+        const purposes = await this.getPurposesWithTranslations(activeVersionId);
 
         // CRITICAL: All purposes must have English labels
         for (const purpose of purposes) {
@@ -104,8 +110,8 @@ export const runtimeService = {
             }
         }
 
-        // 4. Get banner customization
-        const banner = await this.getBannerConfig(siteId);
+        // 4. Get banner customization (from active version)
+        const banner = await this.getBannerConfig(activeVersionId);
 
         // 5. Determine supported languages (union of all available translations)
         const supportedLanguages = this.extractSupportedLanguages(notice, purposes);
@@ -122,8 +128,9 @@ export const runtimeService = {
 
     /**
      * Get notice translations indexed by language code.
+     * @param versionId - The active website version ID
      */
-    async getNoticeTranslations(siteId: string): Promise<Record<string, RuntimeNoticeTranslation> | null> {
+    async getNoticeTranslations(versionId: string): Promise<Record<string, RuntimeNoticeTranslation> | null> {
         const result = await query<{
             languageCode: string;
             title: string;
@@ -145,8 +152,8 @@ export const runtimeService = {
                 wnt.complaint_instruction as "complaintInstruction"
             FROM website_notices wn
             JOIN website_notice_translations wnt ON wn.id = wnt.website_notice_id
-            WHERE wn.website_id = $1`,
-            [siteId]
+            WHERE wn.website_version_id = $1`,
+            [versionId]
         );
 
         if (result.rows.length === 0) {
@@ -171,8 +178,9 @@ export const runtimeService = {
 
     /**
      * Get purposes with translations indexed by language code.
+     * @param versionId - The active website version ID
      */
-    async getPurposesWithTranslations(siteId: string): Promise<RuntimePurpose[]> {
+    async getPurposesWithTranslations(versionId: string): Promise<RuntimePurpose[]> {
         // Get all active purposes - include tag for human-readable purpose keys
         const purposesResult = await query<{
             id: string;
@@ -186,9 +194,9 @@ export const runtimeService = {
                 is_essential as "isEssential",
                 display_order as "displayOrder"
             FROM purposes
-            WHERE website_id = $1 AND status = 'ACTIVE'
+            WHERE website_version_id = $1 AND status = 'ACTIVE'
             ORDER BY display_order, created_at`,
-            [siteId]
+            [versionId]
         );
 
         const purposes: RuntimePurpose[] = [];
@@ -235,8 +243,9 @@ export const runtimeService = {
     /**
      * Get banner configuration with translations.
      * Styles come from banner_customizations, text from website_banner_translations.
+     * @param versionId - The active website version ID
      */
-    async getBannerConfig(siteId: string): Promise<RuntimeBannerConfig> {
+    async getBannerConfig(versionId: string): Promise<RuntimeBannerConfig> {
         // 1. Get styles from banner_customizations
         const stylesResult = await query<{
             position: string;
@@ -264,8 +273,8 @@ export const runtimeService = {
                 font_size as "fontSize",
                 focus_outline_color as "focusOutlineColor"
             FROM banner_customizations
-            WHERE website_id = $1`,
-            [siteId]
+            WHERE website_version_id = $1`,
+            [versionId]
         );
 
         // 2. Get translations from website_banner_translations
@@ -285,8 +294,8 @@ export const runtimeService = {
                 reject_button_text as "rejectButtonText",
                 preferences_button_text as "preferencesButtonText"
             FROM website_banner_translations
-            WHERE website_id = $1`,
-            [siteId]
+            WHERE website_version_id = $1`,
+            [versionId]
         );
 
         // Build text translations object
