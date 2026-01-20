@@ -316,14 +316,73 @@ export async function loaderRoutes(app: FastifyInstance) {
     // CONSENT MANAGEMENT
     // ============================================================================
 
+    // Cookie helper functions
+    function setCookie(name, value, days) {
+        var expires = '';
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = '; expires=' + date.toUTCString();
+        }
+        // Get root domain for cross-subdomain support
+        var domain = getRootDomain();
+        var domainStr = domain ? '; domain=' + domain : '';
+        document.cookie = name + '=' + encodeURIComponent(value) + expires + domainStr + '; path=/; SameSite=Lax';
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + '=';
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            }
+        }
+        return null;
+    }
+
+    function getRootDomain() {
+        // Extract root domain for cookie (e.g., .example.com from sub.example.com)
+        var hostname = window.location.hostname;
+        if (hostname === 'localhost' || /^[0-9.]+$/.test(hostname)) {
+            return ''; // Don't set domain for localhost or IP addresses
+        }
+        var parts = hostname.split('.');
+        if (parts.length > 2) {
+            return '.' + parts.slice(-2).join('.');
+        }
+        return '.' + hostname;
+    }
+
+    function generateUUID() {
+        // Generate a random UUID for anonymous user tracking
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            var v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function getAnonymousId() {
+        var ANON_KEY = '__complyark_anon_id__';
+        var anonId = getCookie(ANON_KEY);
+        if (!anonId) {
+            anonId = generateUUID();
+            setCookie(ANON_KEY, anonId, 365); // 1 year expiry
+        }
+        return anonId;
+    }
+
     function loadExistingConsent() {
         try {
-            var stored = localStorage.getItem(CONSENT_KEY);
+            var stored = getCookie(CONSENT_KEY);
             if (stored) {
                 var consent = JSON.parse(stored);
                 // Validate consent structure
                 if (consent && consent.purposes && consent.websiteId === SITE_ID) {
-                    console.log('[ComplyArk] Loaded existing consent:', consent);
+                    console.log('[ComplyArk] Loaded existing consent from cookie:', consent);
                     return consent;
                 }
             }
@@ -334,20 +393,27 @@ export async function loaderRoutes(app: FastifyInstance) {
     }
 
     function saveConsent(purposes) {
+        var anonymousId = getAnonymousId();
         var consent = {
             purposes: purposes,
             websiteId: SITE_ID,
+            versionId: state.config ? state.config.versionId : null,
+            anonymousId: anonymousId,
             language: state.resolvedLanguage,
             timestamp: Date.now(),
             version: VERSION
         };
 
+        // Save to Cookie (6 months = 180 days)
         try {
-            localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
-            console.log('[ComplyArk] Consent saved:', consent);
+            setCookie(CONSENT_KEY, JSON.stringify(consent), 180);
+            console.log('[ComplyArk] Consent saved to cookie:', consent);
         } catch (e) {
             console.error('[ComplyArk] Cannot save consent:', e);
         }
+
+        // Send to server for audit log (async, non-blocking)
+        sendConsentToServer(consent);
 
         // Dispatch event for external listeners
         try {
@@ -359,6 +425,32 @@ export async function loaderRoutes(app: FastifyInstance) {
         }
 
         return consent;
+    }
+
+    function sendConsentToServer(consent) {
+        // Send consent to server for DPDPA/GDPR audit logging
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_BASE + '/runtime/consent', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        console.log('[ComplyArk] Consent logged to server successfully');
+                    } else {
+                        console.warn('[ComplyArk] Failed to log consent to server:', xhr.status);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({
+                siteId: consent.websiteId,
+                versionId: consent.versionId,
+                anonymousId: consent.anonymousId,
+                preferences: consent.purposes
+            }));
+        } catch (e) {
+            console.warn('[ComplyArk] Error sending consent to server:', e);
+        }
     }
 
     // ============================================================================

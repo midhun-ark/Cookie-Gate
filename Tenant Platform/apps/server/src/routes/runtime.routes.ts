@@ -72,4 +72,74 @@ export async function runtimeRoutes(app: FastifyInstance) {
         reply.header('Access-Control-Allow-Headers', 'Content-Type');
         return reply.status(204).send();
     });
+
+    /**
+     * POST /runtime/consent
+     * 
+     * Receives consent choices from the loader.js and stores them in the database.
+     * This creates an audit log for DPDPA/GDPR compliance.
+     * 
+     * Request body:
+     * {
+     *   "siteId": "uuid",
+     *   "versionId": "uuid",
+     *   "anonymousId": "uuid",
+     *   "preferences": { "analytics": true, "marketing": false }
+     * }
+     */
+    app.post('/runtime/consent', async (request, reply) => {
+        // Add CORS headers
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type');
+
+        const body = request.body as {
+            siteId: string;
+            versionId: string;
+            anonymousId: string;
+            preferences: Record<string, boolean>;
+        };
+
+        // Validate required fields
+        if (!body.siteId || !body.versionId || !body.anonymousId || !body.preferences) {
+            return reply.status(400).send({
+                success: false,
+                message: 'Missing required fields: siteId, versionId, anonymousId, preferences',
+            });
+        }
+
+        try {
+            const result = await runtimeService.saveConsentLog({
+                websiteId: body.siteId,
+                websiteVersionId: body.versionId,
+                anonymousId: body.anonymousId,
+                preferences: body.preferences,
+                userAgent: request.headers['user-agent'],
+                ipAddress: request.ip,
+            });
+
+            if (result.success) {
+                return reply.send({ success: true, id: result.id });
+            } else {
+                return reply.status(500).send({ success: false, message: result.error });
+            }
+        } catch (error) {
+            console.error('Consent log error:', error);
+            return reply.status(500).send({
+                success: false,
+                message: 'Failed to save consent',
+            });
+        }
+    });
+
+    /**
+     * OPTIONS /runtime/consent
+     * Handle CORS preflight for consent endpoint
+     */
+    app.options('/runtime/consent', async (request, reply) => {
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Content-Type');
+        return reply.status(204).send();
+    });
 }

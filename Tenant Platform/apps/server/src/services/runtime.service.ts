@@ -46,6 +46,7 @@ export interface RuntimeBannerConfig {
 
 export interface RuntimeWebsiteConfig {
     siteId: string;
+    versionId: string;
     defaultLanguage: string;
     supportedLanguages: string[];
     notice: Record<string, RuntimeNoticeTranslation>;
@@ -118,6 +119,7 @@ export const runtimeService = {
 
         return {
             siteId,
+            versionId: activeVersionId,
             defaultLanguage: 'en', // English is always the default
             supportedLanguages,
             notice,
@@ -388,5 +390,43 @@ export const runtimeService = {
             if (b === 'en') return 1;
             return a.localeCompare(b);
         });
+    },
+
+    /**
+     * Save a consent log entry.
+     * Called by the loader.js when a user makes a consent choice.
+     */
+    async saveConsentLog(data: {
+        websiteId: string;
+        websiteVersionId: string;
+        anonymousId: string;
+        preferences: Record<string, boolean>;
+        userAgent?: string;
+        ipAddress?: string;
+        countryCode?: string;
+    }): Promise<{ success: boolean; id?: string; error?: string }> {
+        try {
+            const result = await query<{ id: string }>(
+                `INSERT INTO consent_logs 
+                    (website_id, website_version_id, anonymous_id, preferences, user_agent, ip_address, country_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 RETURNING id`,
+                [
+                    data.websiteId,
+                    data.websiteVersionId,
+                    data.anonymousId,
+                    JSON.stringify(data.preferences),
+                    data.userAgent || null,
+                    data.ipAddress || null,
+                    data.countryCode || null,
+                ]
+            );
+
+            console.log(`[Runtime] Consent logged: ${result.rows[0].id}`);
+            return { success: true, id: result.rows[0].id };
+        } catch (error) {
+            console.error('[Runtime] Failed to save consent log:', error);
+            return { success: false, error: 'Failed to save consent' };
+        }
     },
 };

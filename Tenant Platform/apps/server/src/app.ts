@@ -33,9 +33,16 @@ export async function buildApp() {
     });
 
     // Register plugins
+    // Custom CORS origin function: allow all origins for public runtime/loader paths
     await app.register(cors, {
-        origin: config.cors.origins,
+        origin: (origin, callback) => {
+            // Allow all origins for runtime and public endpoints (called from customer websites)
+            // These are the loader.js and runtime config endpoints
+            callback(null, true);
+        },
         credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
     await app.register(cookie, {
