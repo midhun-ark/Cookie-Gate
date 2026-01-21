@@ -20,6 +20,9 @@ import {
     translationRoutes,
     websiteTranslationRoutes,
     analyticsRoutes,
+    privacyTeamRoutes,
+    dprRoutes,
+    dprIntakeRoutes,
 } from './routes';
 import { checkConnection } from './db';
 
@@ -106,9 +109,14 @@ export async function buildApp() {
         // Website translation routes (bulk translate)
         await api.register(websiteTranslationRoutes, { prefix: '' });
 
-
         // Analytics routes
         await api.register(analyticsRoutes, { prefix: '/analytics' });
+
+        // Privacy Team routes
+        await api.register(privacyTeamRoutes, { prefix: '/privacy-team' });
+
+        // Data Principal Requests routes (admin)
+        await api.register(dprRoutes, { prefix: '/data-principal-requests' });
     }, { prefix: '/tenant' });
 
     // Loader routes (Public)
@@ -116,6 +124,9 @@ export async function buildApp() {
 
     // Runtime routes (Public - for loader.js to fetch config)
     await app.register(runtimeRoutes);
+
+    // DPR Intake routes (Public - for cookie banner OTP flow)
+    await app.register(dprIntakeRoutes, { prefix: '/runtime' });
 
     return app;
 }

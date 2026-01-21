@@ -133,9 +133,11 @@ export function NoticeTab({ versionId, onSave, isReadOnly = false }: { versionId
                             onChange={(e) => setSelectedLang(e.target.value)}
                             style={{ background: 'transparent', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer', outline: 'none' }}
                         >
-                            {sortedLanguages.map(lang => (
-                                <option key={lang} value={lang}>{languages?.find(l => l.code === lang)?.name || lang}</option>
-                            ))}
+                            {sortedLanguages.map(lang => {
+                                const langData = languages?.find(l => l.code === lang);
+                                const displayName = langData ? (langData.code === 'en' ? langData.name : `${langData.name} - ${langData.nativeName}`) : lang;
+                                return <option key={lang} value={lang}>{displayName}</option>
+                            })}
                         </select>
                     </div>
 

@@ -84,6 +84,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       CORS_ORIGINS: ${TENANT_CORS_ORIGINS:-http://localhost:8081}
+      # Email (SMTP) configuration - maps SMTP_ vars to EMAIL_ vars
+      EMAIL_HOST: ${SMTP_HOST:-}
+      EMAIL_PORT: ${SMTP_PORT:-587}
+      EMAIL_SECURE: ${EMAIL_SECURE:-false}
+      EMAIL_USER: ${SMTP_USER:-}
+      EMAIL_PASS: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${SMTP_FROM:-noreply@complyark.com}
     depends_on:
       admin-migrate:
         condition: service_completed_successfully

@@ -74,6 +74,37 @@ export async function loaderRoutes(app: FastifyInstance) {
         replayedScripts: new Set() // Track replayed scripts to prevent double execution
     };
 
+    // Language native names map (matching Section 8 DPP languages)
+    var languageNativeNames = {
+        'en': 'English',
+        'hi': 'हिन्दी',
+        'ta': 'தமிழ்',
+        'te': 'తెలుగు',
+        'mr': 'मराठी',
+        'bn': 'বাংলা',
+        'gu': 'ગુજરાતી',
+        'kn': 'ಕನ್ನಡ',
+        'ml': 'മലയാളം',
+        'or': 'ଓଡ଼ିଆ',
+        'pa': 'ਪੰਜਾਬੀ',
+        'as': 'অসমীয়া',
+        'ur': 'اردو',
+        'sa': 'संस्कृतम्',
+        'ks': 'کٲشُر',
+        'sd': 'سنڌي',
+        'kok': 'कोंकणी',
+        'doi': 'डोगरी',
+        'mai': 'मैथिली',
+        'sat': 'ᱥᱟᱱᱛᱟᱲᱤ',
+        'mni': 'ꯃꯤꯇꯩꯂꯣꯟ',
+        'bodo': 'बड़ो',
+        'ne': 'नेपाली'
+    };
+
+    function getLanguageNativeName(code) {
+        return languageNativeNames[code] || code.toUpperCase();
+    }
+
     // ============================================================================
     // BLOCKING ENGINE - Core CMP Enforcement
     // ============================================================================
@@ -376,13 +407,21 @@ export async function loaderRoutes(app: FastifyInstance) {
     }
 
     function loadExistingConsent() {
+        var json = null;
         try {
-            var stored = getCookie(CONSENT_KEY);
-            if (stored) {
-                var consent = JSON.parse(stored);
-                // Validate consent structure
+            // 1. Try Cookie
+            json = getCookie(CONSENT_KEY);
+            
+            // 2. Try LocalStorage fallback (Crucial for file:// protocol)
+            if (!json) {
+                json = localStorage.getItem(CONSENT_KEY);
+            }
+
+            if (json) {
+                var consent = JSON.parse(json);
+                // Validate consent structure & website ID
                 if (consent && consent.purposes && consent.websiteId === SITE_ID) {
-                    console.log('[ComplyArk] Loaded existing consent from cookie:', consent);
+                    console.log('[ComplyArk] Loaded existing consent:', consent);
                     return consent;
                 }
             }
@@ -404,13 +443,19 @@ export async function loaderRoutes(app: FastifyInstance) {
             version: VERSION
         };
 
-        // Save to Cookie (6 months = 180 days)
+        var json = JSON.stringify(consent);
+
+        // 1. Save to Cookie (180 days)
         try {
-            setCookie(CONSENT_KEY, JSON.stringify(consent), 180);
-            console.log('[ComplyArk] Consent saved to cookie:', consent);
-        } catch (e) {
-            console.error('[ComplyArk] Cannot save consent:', e);
-        }
+            setCookie(CONSENT_KEY, json, 180);
+        } catch (e) {}
+
+        // 2. Save to LocalStorage (Fallback)
+        try {
+            localStorage.setItem(CONSENT_KEY, json);
+        } catch (e) {}
+
+        console.log('[ComplyArk] Consent saved locally');
 
         // Send to server for audit log (async, non-blocking)
         sendConsentToServer(consent);
@@ -560,7 +605,7 @@ export async function loaderRoutes(app: FastifyInstance) {
             config.supportedLanguages.forEach(function(code) {
                 options += '<option value="' + code + '"' + 
                     (code === lang ? ' selected' : '') + '>' + 
-                    code.toUpperCase() + '</option>';
+                    getLanguageNativeName(code) + '</option>';
             });
             bannerLangHtml = 
                 '<div style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">' +
@@ -660,6 +705,59 @@ export async function loaderRoutes(app: FastifyInstance) {
     }
 
     // ============================================================================
+    // UI RENDERING - PERSISTENT COOKIE ICON
+    // ============================================================================
+
+    function createCookieIcon() {
+        var icon = document.createElement('div');
+        icon.id = 'complyark-cookie-icon';
+        icon.innerHTML = '🍪';
+        icon.style.cssText = 
+            'position: fixed; bottom: 20px; left: 20px; ' +
+            'width: 36px; height: 36px; ' +
+            'background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); ' +
+            'border-radius: 50%; ' +
+            'display: flex; align-items: center; justify-content: center; ' +
+            'font-size: 18px; ' +
+            'cursor: pointer; ' +
+            'box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); ' +
+            'z-index: 999997; ' +
+            'transition: all 0.3s ease; ' +
+            'border: 2px solid rgba(255,255,255,0.3);';
+        
+        icon.onmouseover = function() {
+            this.style.transform = 'scale(1.1)';
+            this.style.boxShadow = '0 6px 20px rgba(79, 70, 229, 0.5)';
+        };
+        icon.onmouseout = function() {
+            this.style.transform = 'scale(1)';
+            this.style.boxShadow = '0 4px 15px rgba(79, 70, 229, 0.4)';
+        };
+        
+        icon.onclick = function() {
+            hideCookieIcon();
+            showSettings();
+        };
+        
+        icon.title = 'Cookie Settings';
+        
+        return icon;
+    }
+
+    function showCookieIcon() {
+        if (document.getElementById('complyark-cookie-icon')) return;
+        var icon = createCookieIcon();
+        document.body.appendChild(icon);
+    }
+
+    function hideCookieIcon() {
+        var icon = document.getElementById('complyark-cookie-icon');
+        if (icon && icon.parentNode) {
+            icon.parentNode.removeChild(icon);
+        }
+    }
+
+    // ============================================================================
     // UI RENDERING - SETTINGS PANEL
     // ============================================================================
 
@@ -748,7 +846,7 @@ export async function loaderRoutes(app: FastifyInstance) {
             config.supportedLanguages.forEach(function(code) {
                 options += '<option value="' + code + '"' + 
                     (code === lang ? ' selected' : '') + '>' + 
-                    code.toUpperCase() + '</option>';
+                    getLanguageNativeName(code) + '</option>';
             });
             headerLangHtml = 
                 '<div style="display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;">' +
@@ -972,11 +1070,11 @@ export async function loaderRoutes(app: FastifyInstance) {
                     '<div id="complyark-step1">' +
                         '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">1. SELECT REQUEST TYPE</div>' +
                         '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem;" id="complyark-request-types">' +
-                            '<div class="rights-tile" data-type="Access" style="' + tileStyle + '">📋 Access My Data</div>' +
-                            '<div class="rights-tile" data-type="Correction" style="' + tileStyle + '">✏️ Correct My Data</div>' +
-                            '<div class="rights-tile" data-type="Erasure" style="' + tileStyle + '">🗑️ Erase My Data</div>' +
-                            '<div class="rights-tile" data-type="Nomination" style="' + tileStyle + '">👤 Nominate a Person</div>' +
-                            '<div class="rights-tile" data-type="Grievance" style="' + tileStyle + '">📢 Raise a Grievance</div>' +
+                            '<div class="rights-tile" data-type="ACCESS" style="' + tileStyle + '">📋 Access My Data</div>' +
+                            '<div class="rights-tile" data-type="CORRECTION" style="' + tileStyle + '">✏️ Correct My Data</div>' +
+                            '<div class="rights-tile" data-type="ERASURE" style="' + tileStyle + '">🗑️ Erase My Data</div>' +
+                            '<div class="rights-tile" data-type="NOMINATION" style="' + tileStyle + '">👤 Nominate a Person</div>' +
+                            '<div class="rights-tile" data-type="GRIEVANCE" style="' + tileStyle + '">📢 Raise a Grievance</div>' +
                         '</div>' +
                     '</div>' +
                     
@@ -997,14 +1095,22 @@ export async function loaderRoutes(app: FastifyInstance) {
                         '<div id="complyark-details-content"></div>' +
                     '</div>' +
                     
-                    // Step 4: Review & Submit (hidden initially)
-                    '<div id="complyark-step4" style="display: none; margin-top: 1.5rem;">' +
-                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">REVIEW & SUBMIT</div>' +
-                        '<div style="background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 8px;">' +
-                            '<p style="margin: 0 0 0.5rem 0; font-size: 0.9em;"><strong>Request Type:</strong> <span id="complyark-review-type"></span></p>' +
-                            '<p style="margin: 0 0 0.5rem 0; font-size: 0.9em;"><strong>Email:</strong> <span id="complyark-review-email"></span></p>' +
-                            '<p style="margin: 0; font-size: 0.9em;"><strong>Description:</strong> <span id="complyark-review-desc"></span></p>' +
+                    // Step 5: OTP Verification (hidden initially)
+                    '<div id="complyark-step5" style="display: none; margin-top: 1.5rem;">' +
+                        '<div style="font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); margin-bottom: 0.75rem;">4. VERIFY YOUR EMAIL</div>' +
+                        '<p style="font-size: 0.9em; margin-bottom: 1rem;">We have sent a 6-digit verification code to your email address. Please enter it below to confirm your request.</p>' +
+                        '<div style="display: flex; gap: 0.75rem; align-items: center;">' +
+                            '<input type="text" id="complyark-otp-input" maxlength="6" placeholder="000000" style="' +
+                                'padding: 0.75rem 1rem; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; ' +
+                                'font-size: 1.5em; letter-spacing: 8px; text-align: center; width: 180px; ' +
+                                'font-family: monospace;">' +
+                            '<button id="complyark-verify-otp" style="' +
+                                'padding: 0.75rem 1.5rem; border-radius: 8px; border: none; ' +
+                                'background: ' + banner.acceptButtonColor + '; color: white; ' +
+                                'cursor: pointer; font-weight: 600;">Verify & Submit</button>' +
                         '</div>' +
+                        '<p id="complyark-otp-error" style="color: #dc3545; font-size: 0.85em; margin-top: 0.5rem; display: none;"></p>' +
+                        '<p style="font-size: 0.8em; opacity: 0.6; margin-top: 0.75rem;">Code expires in 10 minutes. <a href="#" id="complyark-resend-otp" style="color: ' + banner.acceptButtonColor + ';">Resend code</a></p>' +
                     '</div>' +
                     
                     // Confirmation (hidden initially)
@@ -1081,9 +1187,6 @@ export async function loaderRoutes(app: FastifyInstance) {
                     // Show step 3 with appropriate content
                     renderRightsDetails(rightsFormState.selectedType);
                     
-                    // Show step 4
-                    document.getElementById('complyark-step4').style.display = 'block';
-                    
                     // Enable submit button
                     document.getElementById('complyark-rights-submit').disabled = false;
                     document.getElementById('complyark-rights-submit').style.opacity = '1';
@@ -1152,6 +1255,9 @@ export async function loaderRoutes(app: FastifyInstance) {
         document.getElementById('complyark-details-content').innerHTML = html;
     }
 
+    // Store form state for OTP verification
+    var pendingRequest = null;
+
     function submitRightsRequest() {
         var email = document.getElementById('complyark-rights-email').value;
         var confirmEmail = document.getElementById('complyark-rights-email-confirm').value;
@@ -1168,31 +1274,119 @@ export async function loaderRoutes(app: FastifyInstance) {
             return;
         }
 
-        // Update review section
-        document.getElementById('complyark-review-type').innerText = rightsFormState.selectedType;
-        document.getElementById('complyark-review-email').innerText = email;
-        document.getElementById('complyark-review-desc').innerText = description;
-
-        // Generate request ID
-        var requestId = 'DSR-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        document.getElementById('complyark-request-id').innerText = requestId;
-
-        // Hide form steps and show confirmation
-        document.getElementById('complyark-step1').style.display = 'none';
-        document.getElementById('complyark-step2').style.display = 'none';
-        document.getElementById('complyark-step3').style.display = 'none';
-        document.getElementById('complyark-step4').style.display = 'none';
-        document.getElementById('complyark-confirmation').style.display = 'block';
-        document.getElementById('complyark-rights-footer').style.display = 'none';
-
-        console.log('[ComplyArk] Rights request submitted:', {
-            type: rightsFormState.selectedType,
+        // Store pending request data
+        pendingRequest = {
+            websiteId: SITE_ID,
             email: email,
-            description: description,
-            requestId: requestId
-        });
+            requestType: rightsFormState.selectedType,
+            requestPayload: {
+                description: description
+            },
+            submissionLanguage: state.currentLanguage || 'en'
+        };
 
-        // TODO: Send to backend API
+        // Disable submit button and show loading
+        var submitBtn = document.getElementById('complyark-rights-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Sending...';
+
+        // Send OTP via API
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API_BASE + '/runtime/dpr/send-otp', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Submit Request';
+                
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        // Hide form steps and show OTP step
+                        document.getElementById('complyark-step1').style.display = 'none';
+                        document.getElementById('complyark-step2').style.display = 'none';
+                        document.getElementById('complyark-step3').style.display = 'none';
+                        document.getElementById('complyark-step5').style.display = 'block';
+                        document.getElementById('complyark-rights-footer').style.display = 'none';
+                        
+                        // Wire up OTP handlers
+                        document.getElementById('complyark-verify-otp').onclick = verifyOtpAndSubmit;
+                        document.getElementById('complyark-resend-otp').onclick = function(e) {
+                            e.preventDefault();
+                            submitRightsRequest();
+                        };
+                        
+                        console.log('[ComplyArk] OTP sent to:', email);
+                    } else {
+                        alert('Error: ' + (response.message || 'Failed to send verification code'));
+                    }
+                } else {
+                    try {
+                        var errResponse = JSON.parse(xhr.responseText);
+                        alert('Error: ' + (errResponse.message || 'Failed to send verification code'));
+                    } catch (e) {
+                        alert('Failed to send verification code. Please try again.');
+                    }
+                }
+            }
+        };
+        xhr.send(JSON.stringify(pendingRequest));
+    }
+
+    function verifyOtpAndSubmit() {
+        var otp = document.getElementById('complyark-otp-input').value.trim();
+        var errorEl = document.getElementById('complyark-otp-error');
+        
+        if (!otp || otp.length !== 6) {
+            errorEl.innerText = 'Please enter the 6-digit code.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        errorEl.style.display = 'none';
+        
+        // Disable verify button
+        var verifyBtn = document.getElementById('complyark-verify-otp');
+        verifyBtn.disabled = true;
+        verifyBtn.innerText = 'Verifying...';
+        
+        // Verify OTP and create request
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API_BASE + '/runtime/dpr/verify-otp', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerText = 'Verify & Submit';
+                
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        // Show confirmation
+                        document.getElementById('complyark-request-id').innerText = response.data.requestNumber;
+                        document.getElementById('complyark-step5').style.display = 'none';
+                        document.getElementById('complyark-confirmation').style.display = 'block';
+                        
+                        console.log('[ComplyArk] Request created:', response.data.requestNumber);
+                    } else {
+                        errorEl.innerText = response.message || 'Invalid or expired code.';
+                        errorEl.style.display = 'block';
+                    }
+                } else {
+                    try {
+                        var errResponse = JSON.parse(xhr.responseText);
+                        errorEl.innerText = errResponse.message || 'Verification failed. Please try again.';
+                    } catch (e) {
+                        errorEl.innerText = 'Verification failed. Please try again.';
+                    }
+                    errorEl.style.display = 'block';
+                }
+            }
+        };
+        xhr.send(JSON.stringify({
+            email: pendingRequest.email,
+            otp: otp
+        }));
     }
 
     function hideRightsForm() {
@@ -1200,6 +1394,8 @@ export async function loaderRoutes(app: FastifyInstance) {
             document.body.removeChild(rightsFormState.element);
             rightsFormState.element = null;
         }
+        // Restore the settings panel or banner
+        showSettings();
     }
 
     function showSettings() {
@@ -1285,6 +1481,7 @@ export async function loaderRoutes(app: FastifyInstance) {
         saveConsent(consent);
         hideBanner();
         hideSettings();
+        showCookieIcon();
         replayConsentedResources();
     }
 
@@ -1299,6 +1496,7 @@ export async function loaderRoutes(app: FastifyInstance) {
         saveConsent(consent);
         hideBanner();
         hideSettings();
+        showCookieIcon();
         replayConsentedResources();
     }
 
@@ -1315,6 +1513,7 @@ export async function loaderRoutes(app: FastifyInstance) {
         state.consentGiven = true;
         saveConsent(consent);
         hideSettings();
+        showCookieIcon();
         replayConsentedResources();
     }
 
@@ -1339,11 +1538,14 @@ export async function loaderRoutes(app: FastifyInstance) {
         },
         // Withdraw consent (re-show banner)
         withdrawConsent: function() {
+            console.log('[ComplyArk] Withdrawing consent...');
             try {
                 localStorage.removeItem(CONSENT_KEY);
+                setCookie(CONSENT_KEY, '', -1);
             } catch (e) {}
             state.purposes = {};
             state.consentGiven = false;
+            hideCookieIcon();
             showBanner();
         }
     };
@@ -1371,6 +1573,8 @@ export async function loaderRoutes(app: FastifyInstance) {
             // Still need to fetch config for replay
             fetchConfig(function() {
                 replayConsentedResources();
+                // Show the floating cookie icon for returning users
+                showCookieIcon();
             });
             return;
         }

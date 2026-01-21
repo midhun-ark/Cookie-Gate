@@ -6,3 +6,6 @@ export * from './purpose.repository';
 export * from './banner.repository';
 export * from './audit.repository';
 export * from './language.repository';
+export * from './privacy-team.repository';
+export * from './dpr.repository';
+

@@ -1,0 +1,1 @@
+export { PrivacyTeamPage } from './PrivacyTeam';

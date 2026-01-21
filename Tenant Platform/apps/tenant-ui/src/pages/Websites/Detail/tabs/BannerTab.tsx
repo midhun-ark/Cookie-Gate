@@ -233,7 +233,7 @@ export function BannerTab({ versionId, onSave, isReadOnly = false }: { versionId
                                     style={{ fontSize: '13px', fontWeight: 500, background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer', color: '#374151' }}
                                 >
                                     {languages.map((l: SupportedLanguage) => (
-                                        <option key={l.code} value={l.code}>{l.name}</option>
+                                        <option key={l.code} value={l.code}>{l.code === 'en' ? l.name : `${l.name} - ${l.nativeName}`}</option>
                                     ))}
                                 </select>
                             </div>

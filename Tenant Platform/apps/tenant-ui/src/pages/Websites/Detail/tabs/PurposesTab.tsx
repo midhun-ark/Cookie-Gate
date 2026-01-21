@@ -55,7 +55,7 @@ export function PurposesTab({ versionId, onSave, isReadOnly = false }: { version
                             style={{ fontSize: '12px', border: 'none', background: 'transparent', cursor: 'pointer', outline: 'none', color: '#374151', fontWeight: 500 }}
                         >
                             {languages.map((l: SupportedLanguage) => (
-                                <option key={l.code} value={l.code}>{l.name}</option>
+                                <option key={l.code} value={l.code}>{l.code === 'en' ? l.name : `${l.name} - ${l.nativeName}`}</option>
                             ))}
                         </select>
                     </div>

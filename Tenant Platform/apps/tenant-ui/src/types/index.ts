@@ -196,3 +196,113 @@ export interface ApiResponse<T = unknown> {
     errors?: Array<{ field?: string; message: string }>;
     pagination?: PaginationInfo;
 }
+
+// ============================================================================
+// Privacy Team
+// ============================================================================
+
+export type TeamMemberRole = 'ADMIN' | 'STAFF';
+export type TeamMemberStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface PrivacyTeamMember {
+    id: string;
+    tenantId: string;
+    fullName: string;
+    email: string;
+    role: TeamMemberRole;
+    status: TeamMemberStatus;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateTeamMemberInput {
+    fullName: string;
+    email: string;
+    role: TeamMemberRole;
+}
+
+export interface UpdateTeamMemberInput {
+    fullName?: string;
+    email?: string;
+    role?: TeamMemberRole;
+}
+
+// ============================================================================
+// Data Principal Requests
+// ============================================================================
+
+export type DPRRequestType = 'ACCESS' | 'CORRECTION' | 'ERASURE' | 'NOMINATION' | 'GRIEVANCE';
+export type DPRStatus = 'SUBMITTED' | 'WORK_IN_PROGRESS' | 'RESPONDED' | 'RESOLVED';
+export type DPROutcome = 'FULFILLED' | 'PARTIALLY_FULFILLED' | 'REJECTED';
+export type DPRSlaState = 'NORMAL' | 'WARNING' | 'BREACHED';
+
+export interface DataPrincipalRequest {
+    id: string;
+    tenantId: string;
+    websiteId: string;
+    requestNumber: string;
+    requestType: DPRRequestType;
+    dataPrincipalEmail: string;
+    submissionLanguage: string;
+    status: DPRStatus;
+    responseOutcome: DPROutcome | null;
+    assignedTo: string | null;
+    assigneeName?: string;
+    assigneeEmail?: string;
+    websiteDomain?: string;
+    slaDueDate: string;
+    slaDays: number;
+    slaState: DPRSlaState;
+    originalPayload: Record<string, any>;
+    responseReason: string | null;
+    responseAttachments: Array<{ name: string; url: string }>;
+    respondedAt: string | null;
+    closedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface DPRCommunication {
+    id: string;
+    requestId: string;
+    direction: 'INCOMING' | 'OUTGOING';
+    subject: string;
+    body: string;
+    attachments: Array<{ name: string; url: string }>;
+    sentAt: string;
+    createdAt: string;
+}
+
+export interface DPRAuditEntry {
+    id: string;
+    requestId: string;
+    actorId: string | null;
+    actorEmail: string;
+    action: string;
+    previousValue: Record<string, any> | null;
+    newValue: Record<string, any> | null;
+    ipAddress: string | null;
+    createdAt: string;
+}
+
+export interface SlaConfiguration {
+    id: string;
+    tenantId: string;
+    defaultSlaDays: number;
+    nominationSlaDays: number;
+    warningThresholdDays: number;
+}
+
+export interface DPRListFilters {
+    requestType?: DPRRequestType;
+    status?: DPRStatus;
+    assignedTo?: string;
+    slaState?: DPRSlaState;
+}
+
+export interface RespondInput {
+    outcome: DPROutcome;
+    reason: string;
+    attachments?: Array<{ name: string; url: string }>;
+}
+

@@ -421,4 +421,122 @@ export const analyticsApi = {
     },
 };
 
+// ==================== PRIVACY TEAM ====================
+
+import type {
+    PrivacyTeamMember,
+    CreateTeamMemberInput,
+    UpdateTeamMemberInput,
+    DataPrincipalRequest,
+    DPRCommunication,
+    DPRAuditEntry,
+    SlaConfiguration,
+    DPRListFilters,
+    RespondInput,
+} from '@/types';
+
+export const privacyTeamApi = {
+    list: async (): Promise<PrivacyTeamMember[]> => {
+        const response = await api.get<ApiResponse<PrivacyTeamMember[]>>('/privacy-team');
+        return response.data.data!;
+    },
+
+    listActive: async (): Promise<PrivacyTeamMember[]> => {
+        const response = await api.get<ApiResponse<PrivacyTeamMember[]>>('/privacy-team/active');
+        return response.data.data!;
+    },
+
+    get: async (id: string): Promise<PrivacyTeamMember> => {
+        const response = await api.get<ApiResponse<PrivacyTeamMember>>(`/privacy-team/${id}`);
+        return response.data.data!;
+    },
+
+    create: async (data: CreateTeamMemberInput): Promise<PrivacyTeamMember> => {
+        const response = await api.post<ApiResponse<PrivacyTeamMember>>('/privacy-team', data);
+        return response.data.data!;
+    },
+
+    update: async (id: string, data: UpdateTeamMemberInput): Promise<PrivacyTeamMember> => {
+        const response = await api.put<ApiResponse<PrivacyTeamMember>>(`/privacy-team/${id}`, data);
+        return response.data.data!;
+    },
+
+    toggleStatus: async (id: string, status: 'ACTIVE' | 'INACTIVE'): Promise<PrivacyTeamMember> => {
+        const response = await api.patch<ApiResponse<PrivacyTeamMember>>(`/privacy-team/${id}/status`, { status });
+        return response.data.data!;
+    },
+
+    delete: async (id: string): Promise<void> => {
+        await api.delete(`/privacy-team/${id}`);
+    },
+};
+
+// ==================== DATA PRINCIPAL REQUESTS ====================
+
+export const dprApi = {
+    list: async (filters?: DPRListFilters): Promise<DataPrincipalRequest[]> => {
+        const params = new URLSearchParams();
+        if (filters?.requestType) params.append('requestType', filters.requestType);
+        if (filters?.status) params.append('status', filters.status);
+        if (filters?.assignedTo) params.append('assignedTo', filters.assignedTo);
+        if (filters?.slaState) params.append('slaState', filters.slaState);
+
+        const response = await api.get<ApiResponse<DataPrincipalRequest[]>>(
+            `/data-principal-requests?${params.toString()}`
+        );
+        return response.data.data!;
+    },
+
+    get: async (id: string): Promise<DataPrincipalRequest> => {
+        const response = await api.get<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}`);
+        return response.data.data!;
+    },
+
+    getCommunications: async (id: string): Promise<DPRCommunication[]> => {
+        const response = await api.get<ApiResponse<DPRCommunication[]>>(`/data-principal-requests/${id}/communications`);
+        return response.data.data!;
+    },
+
+    getAuditLog: async (id: string): Promise<DPRAuditEntry[]> => {
+        const response = await api.get<ApiResponse<DPRAuditEntry[]>>(`/data-principal-requests/${id}/audit`);
+        return response.data.data!;
+    },
+
+    getSlaConfig: async (): Promise<SlaConfiguration> => {
+        const response = await api.get<ApiResponse<SlaConfiguration>>('/data-principal-requests/sla-config');
+        return response.data.data!;
+    },
+
+    updateSlaConfig: async (data: Partial<SlaConfiguration>): Promise<SlaConfiguration> => {
+        const response = await api.put<ApiResponse<SlaConfiguration>>('/data-principal-requests/sla-config', data);
+        return response.data.data!;
+    },
+
+    assign: async (id: string, assignedTo: string | null): Promise<DataPrincipalRequest> => {
+        const response = await api.put<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}/assign`, { assignedTo });
+        return response.data.data!;
+    },
+
+    updateSla: async (id: string, slaDays: number): Promise<DataPrincipalRequest> => {
+        const response = await api.put<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}/sla`, { slaDays });
+        return response.data.data!;
+    },
+
+    startWork: async (id: string): Promise<DataPrincipalRequest> => {
+        const response = await api.post<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}/start`);
+        return response.data.data!;
+    },
+
+    respond: async (id: string, data: RespondInput): Promise<DataPrincipalRequest> => {
+        const response = await api.post<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}/respond`, data);
+        return response.data.data!;
+    },
+
+    close: async (id: string): Promise<DataPrincipalRequest> => {
+        const response = await api.post<ApiResponse<DataPrincipalRequest>>(`/data-principal-requests/${id}/close`);
+        return response.data.data!;
+    },
+};
+
 export * from './translation';
+

@@ -11,3 +11,7 @@ export * from './runtime.routes';
 export * from './analytics.routes';
 export * from './translation.routes';
 export * from './website-translation.routes';
+export * from './privacy-team.routes';
+export * from './dpr.routes';
+export * from './dpr-intake.routes';
+

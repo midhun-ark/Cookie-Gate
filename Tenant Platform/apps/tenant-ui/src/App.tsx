@@ -12,6 +12,8 @@ import { WebsitesPage, WebsiteDetailPage } from '@/pages/Websites';
 import { AuditLogsPage } from '@/pages/AuditLogs';
 import { ConsentLogsPage } from '@/pages/ConsentLogs/ConsentLogsPage';
 import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
+import { PrivacyTeamPage } from '@/pages/PrivacyTeam';
+import { DataPrincipalRequestsPage, DataPrincipalRequestDetailPage } from '@/pages/DataPrincipalRequests';
 
 // Auth Guard Component
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -51,6 +53,9 @@ function App() {
                 <Route path="audit-logs" element={<AuditLogsPage />} />
                 <Route path="consent-logs" element={<ConsentLogsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="privacy-team" element={<PrivacyTeamPage />} />
+                <Route path="data-principal-requests" element={<DataPrincipalRequestsPage />} />
+                <Route path="data-principal-requests/:id" element={<DataPrincipalRequestDetailPage />} />
             </Route>
 
             {/* Catch all */}
