@@ -7,3 +7,6 @@ export * from './banner.service';
 export * from './audit.service';
 export * from './language.service';
 export * from './runtime.service';
+export * from './translation.service';
+export * from './website-translation.service';
+export * from './analytics.service';

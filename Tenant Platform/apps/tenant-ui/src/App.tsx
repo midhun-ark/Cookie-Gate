@@ -10,6 +10,8 @@ import { ResetPasswordPage } from '@/pages/ResetPassword';
 import { DashboardPage } from '@/pages/Dashboard';
 import { WebsitesPage, WebsiteDetailPage } from '@/pages/Websites';
 import { AuditLogsPage } from '@/pages/AuditLogs';
+import { ConsentLogsPage } from '@/pages/ConsentLogs/ConsentLogsPage';
+import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage';
 
 // Auth Guard Component
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -47,6 +49,8 @@ function App() {
                 <Route path="websites" element={<WebsitesPage />} />
                 <Route path="websites/:id" element={<WebsiteDetailPage />} />
                 <Route path="audit-logs" element={<AuditLogsPage />} />
+                <Route path="consent-logs" element={<ConsentLogsPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
             </Route>
 
             {/* Catch all */}

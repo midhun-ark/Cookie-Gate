@@ -19,6 +19,7 @@ import {
     runtimeRoutes,
     translationRoutes,
     websiteTranslationRoutes,
+    analyticsRoutes,
 } from './routes';
 import { checkConnection } from './db';
 
@@ -104,6 +105,10 @@ export async function buildApp() {
 
         // Website translation routes (bulk translate)
         await api.register(websiteTranslationRoutes, { prefix: '' });
+
+
+        // Analytics routes
+        await api.register(analyticsRoutes, { prefix: '/analytics' });
     }, { prefix: '/tenant' });
 
     // Loader routes (Public)

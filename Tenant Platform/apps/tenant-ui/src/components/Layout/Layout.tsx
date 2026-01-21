@@ -7,6 +7,8 @@ import {
     Menu,
     X,
     Cookie,
+    PieChart,
+    Activity,
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store';
 import { authApi } from '@/api';
@@ -15,6 +17,8 @@ import './Layout.css';
 const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/websites', icon: Globe, label: 'Websites' },
+    { path: '/analytics', icon: PieChart, label: 'Analytics' },
+    { path: '/consent-logs', icon: Activity, label: 'Consent Logs' },
     { path: '/audit-logs', icon: FileText, label: 'Audit Logs' },
 ];
 

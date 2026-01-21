@@ -14,6 +14,8 @@ import type {
     AuditLog,
     SupportedLanguage,
     PaginationInfo,
+    ConsentLog,
+    AnalyticsStats,
 } from '@/types';
 
 // ==================== AUTH ====================
@@ -382,6 +384,39 @@ export const auditApi = {
 export const languageApi = {
     list: async (): Promise<SupportedLanguage[]> => {
         const response = await api.get<ApiResponse<SupportedLanguage[]>>('/languages');
+        return response.data.data!;
+    },
+};
+
+// ==================== ANALYTICS ====================
+
+export const analyticsApi = {
+    getConsentLogs: async (
+        websiteId?: string,
+        page: number = 1,
+        limit: number = 10
+    ): Promise<{ items: ConsentLog[]; pagination: PaginationInfo }> => {
+        const params = new URLSearchParams();
+        if (websiteId) params.append('websiteId', websiteId);
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+
+        const response = await api.get<ApiResponse<ConsentLog[]> & { pagination: PaginationInfo }>(
+            `/analytics/consent-logs?${params.toString()}`
+        );
+        return {
+            items: response.data.data!,
+            pagination: response.data.pagination!,
+        };
+    },
+
+    getStats: async (websiteId?: string): Promise<AnalyticsStats> => {
+        const params = new URLSearchParams();
+        if (websiteId) params.append('websiteId', websiteId);
+
+        const response = await api.get<ApiResponse<AnalyticsStats>>(
+            `/analytics/stats?${params.toString()}`
+        );
         return response.data.data!;
     },
 };

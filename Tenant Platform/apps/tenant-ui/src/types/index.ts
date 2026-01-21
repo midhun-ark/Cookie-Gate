@@ -167,6 +167,27 @@ export interface SupportedLanguage {
     isActive: boolean;
 }
 
+// Analytics
+export interface ConsentLog {
+    id: string;
+    anonymousId: string;
+    preferences: Record<string, boolean>;
+    ipAddress?: string;
+    userAgent?: string;
+    countryCode?: string;
+    createdAt: string;
+}
+
+export interface AnalyticsStats {
+    totalConsents: number;
+    acceptedConsents: number;
+    optInRate: number;
+    dailyTrend: Array<{
+        date: string;
+        count: string;
+    }>;
+}
+
 // API Response
 export interface ApiResponse<T = unknown> {
     success: boolean;
